@@ -340,3 +340,11 @@ if __name__ == "__main__":
     assert expectedText3 == makeMKV._cleanDiscName('BONES_SEASON_8_F1_D_1')
     assert expectedText3 == makeMKV._cleanDiscName('BONES_SEASON_8_F1_D1')
 
+    expectedText4 = '24 - Season 2 Disc 2'
+
+    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON2_DISC2')
+    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON2_DISC_2')
+    assert expectedText4 == makeMKV._cleanDiscName('24SEASON2DISC2')
+    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON_2_DISC_2')
+    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON_2_DISK_2')
+

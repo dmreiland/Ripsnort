@@ -55,7 +55,7 @@ class disc_track:
         retStr += 'SegmentsMap: ' + str(self.segmentsMap) + ', '
         retStr += 'TitleID: ' + str(self.titleID) + ', '
         retStr += 'TrackNumber: ' + str(self.trackNumber) + ', '
-        retStr += 'Filename: ' + self.outputFileName + ', '
+        retStr += 'Filename: ' + self.outputFileName + '>'
         
         return retStr
     

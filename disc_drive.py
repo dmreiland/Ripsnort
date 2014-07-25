@@ -73,9 +73,9 @@ class DiscDrive:
     def openTray(self):
         if self.osType == OS_MAC:
             try:
-                subprocess.check_output(['drutil','-drive',str(self._macDriveNumber()),'tray','eject'])
+                subprocess.check_output(['sudo','drutil','-drive',str(self._macDriveNumber()),'tray','eject'])
             except subprocess.CalledProcessError as e:
-                logging.error( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
+                print( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)
 
     def isDiscInserted(self):
@@ -123,5 +123,15 @@ class DiscDrive:
         return mountedPath
         
     def _macDriveNumber(self):
-        return 1
+        driveNumber = None
+        
+        for driveCheck in range(1,9):
+            driveOutput = subprocess.check_output(['drutil','status','-drive',str(driveCheck)])
+
+            if self.deviceID in driveOutput:
+                driveNumber = driveCheck
+                break
+        
+        return driveNumber
+            
 

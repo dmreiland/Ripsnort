@@ -24,7 +24,7 @@ class IMDb:
         results = filter(lambda x: x.content_type == 'movie', results)
         return results
 
-    def findTVShow(self,tvshow,year=None):
+    def findTVShow(self,tvshow,season=None,year=None):
         results = self._findMovieAndTV(tvshow.strip(),year)
         results = filter(lambda x: x.content_type == 'tvshow', results)
         return results
@@ -48,8 +48,9 @@ class IMDb:
             
             #fetch detailed response and populate other fields
             resDetail = self.api.find_movie_by_id(mediaobj.unique_id)
-
-            mediaobj.durationS = resDetail.runtime * 60
+            
+            if resDetail.runtime is not None:
+                mediaobj.durationS = int(resDetail.runtime) * 60
             
             if resDetail.type == 'tv_series':
                 mediaobj.content_type = 'tvshow'
@@ -62,12 +63,20 @@ class IMDb:
 
 if __name__ == "__main__":
     m = IMDb()
+    #find movie
     assert len(m.findMovie('The Ant Bully')) == 1
     assert m.findMovie('The Ant Bully')[0].production_year == 2006
     assert len(m.findMovie('Toy Story 3')) == 1
     assert m.findMovie('Toy Story 3')[0].production_year == 2010
     assert len(m.findMovie('Die Hard',1988)) == 1
     assert len(m.findTVShow('The Brittas Empire')) == 1
+    assert len(m.findMovie('The X-Files')) == 0
+
+    #find tvshow
     assert m.findTVShow('The Brittas Empire')[0].production_year == 1991
     assert len(m.findTVShow('The X-Files')) == 1
-    assert len(m.findMovie('The X-Files')) == 0
+
+    #test the episode length
+    assert m.findTVShow('The X-Files')[0].durationS == 2640
+    assert m.findTVShow('24')[0].durationS == 2640
+    assert m.findTVShow('The Simpsons')[0].durationS == 1320

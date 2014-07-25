@@ -18,5 +18,14 @@ class notification:
             import emailsmtp
             self.api = emailsmtp.EmailSMTP(params)
 
-    def notifyEvent(self,title,message):
-        self.api.notifyEvent(title,message)
+    def startedBackingUpDisc(self,discName):
+        self.api.startedBackingUpDisc(discName)
+
+    def endedBackingUpDisc(self,discName):
+        self.api.endedBackingUpDisc(discName)
+        
+    def startedRippingTracks(self,tracks,discName):
+        self.api.startedRippingTracks(tracks,discName)
+        
+    def finishedRippingTracks(self,tracks,discName):
+        self.api.finishedRippingTracks(tracks,discName)

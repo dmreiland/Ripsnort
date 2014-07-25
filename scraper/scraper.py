@@ -10,6 +10,9 @@ import re
 from MediaContent import MediaContent
 
 
+REGEX_SEASON_MATCH = r'(?i)(?:season|series|s)[_| ]?(\d{1,2})'
+
+
 class MediaScraper:
 
     def __init__(self,params):
@@ -33,7 +36,24 @@ class MediaScraper:
 
     def findTVShow(self,tvshow,year=None):
         tvshow = tvshow.strip()
-        return self.api.findTVShow(tvshow,year)
+        
+        seasonNumber=MediaScraper._extractSeasonNumberFromName(tvshow)
+        
+        tvshow = MediaScraper._removeSeasonFromName(tvshow)
+        
+        tvshow = re.sub(r'(?i)[_ ]?(d|disc|disk)[_| ]?\d{1,2}','',tvshow)
+        
+        tvshow = tvshow.strip()
+        
+        if tvshow[-1] == '-':
+            tvshow = tvshow[0:len(tvshow)-1]
+            tvshow = tvshow.strip()
+        
+        if year is None:
+            year = MediaScraper._extractYearFromName(tvshow)
+            tvshow = MediaScraper._removeYearFromName(tvshow)
+
+        return self.api.findTVShow(tvshow,seasonNumber,year)
         
     def findContent(self,contentType,searchword):
         if contentType.lower().strip() == 'movie':
@@ -77,6 +97,23 @@ class MediaScraper:
             nameReturn = nameReturn.strip()
         
         return nameReturn
+
+    @staticmethod
+    def _extractSeasonNumberFromName(name):
+        seasonReturn = None
+
+        matchGroups = re.findall(REGEX_SEASON_MATCH,name)
+        
+        if len(matchGroups) == 1:
+            seasonReturn = int(matchGroups[0])
+
+        return seasonReturn
+        
+    @staticmethod
+    def _removeSeasonFromName(name):
+        nameReturn = re.sub(REGEX_SEASON_MATCH,'',name)
+        return nameReturn
+
 
 if __name__ == "__main__":
     m = MediaScraper('imdb',{})
