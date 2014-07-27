@@ -9,23 +9,34 @@ import sys
 class notification:
 
     def __init__(self,params):
+        self.apis = []
+
         dirname = os.path.dirname(__file__)
         
         notifyType = params['type']
 
-        if notifyType == 'email':
+        if 'email' in notifyType:
             sys.path.append(dirname + "/emailsmtp/")
             import emailsmtp
-            self.api = emailsmtp.EmailSMTP(params)
+            self.apis.append( emailsmtp.EmailSMTP(params) )
+
+        if 'macnotify' in notifyType:
+            sys.path.append(dirname + "/macnotificationcenter/")
+            import macnotificationcenter
+            self.apis.append( macnotificationcenter.MacNotify(params) )
 
     def startedBackingUpDisc(self,discName):
-        self.api.startedBackingUpDisc(discName)
+        for api in self.apis:
+            api.startedBackingUpDisc(discName)
 
     def endedBackingUpDisc(self,discName):
-        self.api.endedBackingUpDisc(discName)
+        for api in self.apis:
+            api.endedBackingUpDisc(discName)
         
     def startedRippingTracks(self,tracks,discName):
-        self.api.startedRippingTracks(tracks,discName)
+        for api in self.apis:
+            api.startedRippingTracks(tracks,discName)
         
     def finishedRippingTracks(self,tracks,discName):
-        self.api.finishedRippingTracks(tracks,discName)
+        for api in self.apis:
+            api.finishedRippingTracks(tracks,discName)

@@ -53,7 +53,7 @@ class EmailSMTP:
         message = "Finished ripping " + str(len(tracks)) + " tracks. \n"
 
         for track in tracks:
-            message += "    -" + track.outputFileName + ", " + track.chapters + ", " + (track.durationS/60) + "minutes\n"
+            message += "    -" + track.outputFileName + ", " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes\n"
 
         m = MIMEText(message)
 

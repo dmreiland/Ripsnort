@@ -11,7 +11,7 @@ Notes
 
 Setup
 --------------
-edit settings.ini and change the following values
+Config: edit settings.ini and change the following values to match your email address and movie/tv save folder
 ```
     smtp_source_email = myemailaddr@gmail.com
     smtp_destination_email = myemailaddr@gmail.com
@@ -23,6 +23,13 @@ edit settings.ini and change the following values
     tv_complete_save_path = /save_path
 
 ```
+
+Autorun: edit mac_autorun.scpt and set formatted_path to the location of ripsnort and set disk_device to the device of the dvd drive. Example settings:
+```
+    set formatted_path to "/Users/ryan/ripsnort"
+    set disk_device to "/dev/disk2"
+```
+Go to 'System Preferences'->'CDs & DVDs'->'When you insert a Video DVD' and select mac_autorun.scpt
 
 
 Running
