@@ -66,7 +66,7 @@ class MacNotify:
             notification.setSubtitle_(subtitle)
             notification.setInformativeText_(info_text)
             
-            urlObj = NSURL.alloc().initWithString_('https://raw.github.com/ryandev/ripsnort/assets/logo200px.png')
+            urlObj = NSURL.alloc().initWithString_('https://raw.githubusercontent.com/Ryandev/Ripsnort/master/assets/logo200px.png')
             imageObj = NSImage.alloc().initWithContentsOfURL_(urlObj)
             
             notification.set_identityImage_(imageObj)
