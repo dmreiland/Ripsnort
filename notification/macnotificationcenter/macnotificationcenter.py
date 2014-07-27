@@ -58,10 +58,18 @@ class MacNotify:
 
             NSUserNotification = objc.lookUpClass('NSUserNotification')
             NSUserNotificationCenter = objc.lookUpClass('NSUserNotificationCenter')
+            NSImage = objc.lookUpClass('NSImage')
+            NSURL = objc.lookUpClass('NSURL')
+
             notification = NSUserNotification.alloc().init()
             notification.setTitle_(title)
             notification.setSubtitle_(subtitle)
             notification.setInformativeText_(info_text)
+            
+            urlObj = NSURL.alloc().initWithString_('https://raw.github.com/ryandev/ripsnort/assets/logo200px.png')
+            imageObj = NSImage.alloc().initWithContentsOfURL_(urlObj)
+            
+            notification.set_identityImage_(imageObj)
 
             if sound:
                 notification.setSoundName_("NSUserNotificationDefaultSoundName")
