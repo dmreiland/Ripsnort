@@ -58,6 +58,8 @@ def dictTypeConversion(dictionaryCheck):
                 val = floatVal
             elif intVal is not None:
                 val = intVal
+            elif val == 'none' or val == 'nil' or val == 'null':
+                val = None
             else:
                 #undo val changes
                 val = dictionaryCheck[key]
@@ -212,7 +214,6 @@ if __name__ == "__main__":
 
     discdevice=''
 
-
     argsList = sys.argv[1:]
     
     while ( len(argsList) > 0 ):
@@ -235,7 +236,7 @@ if __name__ == "__main__":
         config = loadConfigFile(os.path.join(dirname,'settings.ini'))
 
         #load ripper, scraper and notification
-        notify = notification.notification(config['notification'])
+        notify = notification.Notification(config['notification'])
         
         ripper = ripper.Ripper(config['ripper'],discdevice)
 
