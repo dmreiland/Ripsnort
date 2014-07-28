@@ -26,7 +26,7 @@ class Notification:
             self.apis.append( macnotificationcenter.MacNotify(params) )
 
         if 'audionotify' in notifyType:
-            sys.path.append(dirname + "/audonotify/")
+            sys.path.append(dirname + "/audionotify/")
             import audionotify
             self.apis.append( audionotify.AudioNotify(params) )
 

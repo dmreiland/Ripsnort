@@ -49,9 +49,9 @@ class AudioNotify:
 
         self.pathSoundClipRipFinished = None
 
-        if params['audionotify_url_ripsfinished']:
-            url = params['audionotify_url_ripsfinished']
-            self.pathSoundClipRipFinished = os.path.join(self.temporaryDirectory,'audionotify_url_ripsfinished')
+        if params['audionotify_url_ripfinished']:
+            url = params['audionotify_url_ripfinished']
+            self.pathSoundClipRipFinished = os.path.join(self.temporaryDirectory,'audionotify_url_ripfinished')
 
             if not os.path.isfile(self.pathSoundClipRipFinished):
                 AudioNotify._loadSoundUrlToFile(url,self.pathSoundClipRipFinished)
@@ -101,7 +101,7 @@ if __name__ == "__main__":
      params['audionotify_url_backupstarted'] = 'http://soundbible.com/grab.php?id=1997&type=wav'
      params['audionotify_url_backupfinished'] = None
      params['audionotify_url_ripstarted'] = 'http://soundbible.com/grab.php?id=1997&type=wav'
-     params['audionotify_url_ripsfinished'] = None
+     params['audionotify_url_ripfinished'] = None
 
      m = AudioNotify(params)
      m.startedBackingUpDisc('MOVIENAME')
