@@ -74,7 +74,7 @@ class DiscDrive:
     def openTray(self):
         if self.osType == OS_MAC:
             try:
-                subprocess.check_output(['sudo','drutil','-drive',str(self._macDriveNumber()),'tray','eject'])
+                subprocess.check_output(['drutil','-drive',str(self._macDriveNumber()),'tray','eject'])
             except subprocess.CalledProcessError as e:
                 print( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)

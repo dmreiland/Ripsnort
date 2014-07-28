@@ -30,16 +30,41 @@ class IMDb:
         return results
         
     def _findMovieAndTV(self,searchWord,year=None):
+    
+        #if searchWord starts with 'the' remove it before searching
+        if searchWord.lower().startswith('the'):
+            searchWord = searchWord[len('the'):len(searchWord)].strip()
+    
         resultsByTitle = self.api.find_by_title(searchWord)
         
-        resultsByTitle = filter(lambda x: x['title'].lower().strip() == searchWord.lower(), resultsByTitle)
+        filteredByTitle = []
         
+        for result in resultsByTitle:
+            title = result['title']
+            title = title.lower()
+            title = title.replace('-','')
+            title = title.replace(':','')
+            title = title.replace(' ','')
+            
+            #remove 'the' prefix
+            if title.startswith('the'):
+                title = title[len('the'):len(title)]
+                
+            cmp = searchWord.lower().replace('-','').replace(':','').replace(' ','')
+            
+            if cmp.startswith('the'):
+                cmp = cmp[len('the'):len(cmp)]
+            
+            if title == cmp:
+                filteredByTitle.append(result)
+                
+        #filter by year if applicable
         if year is not None:
-            resultsByTitle = filter(lambda x: int(x['year']) == year, resultsByTitle)
+            filteredByTitle = filter(lambda x: int(x['year']) == year, resultsByTitle)
         
         mediaList = []
         
-        for result in resultsByTitle:
+        for result in filteredByTitle:
             mediaobj = MediaContent()
             mediaobj.title = result['title'].strip()
             mediaobj.production_year = int(result['year'])
@@ -57,7 +82,8 @@ class IMDb:
             elif resDetail.type == 'feature':
                 mediaobj.content_type = 'movie'
             
-            mediaList.append(mediaobj)
+            if mediaobj.content_type is not None:
+                mediaList.append(mediaobj)
         
         return mediaList
 
@@ -65,18 +91,38 @@ if __name__ == "__main__":
     m = IMDb()
     #find movie
     assert len(m.findMovie('The Ant Bully')) == 1
+    assert len(m.findMovie('Ant Bully')) == 1
+
     assert m.findMovie('The Ant Bully')[0].production_year == 2006
+    assert m.findMovie('Ant Bully')[0].production_year == 2006
+
+    assert len(m.findMovie('The Toy Story 3')) == 1
     assert len(m.findMovie('Toy Story 3')) == 1
+
     assert m.findMovie('Toy Story 3')[0].production_year == 2010
     assert len(m.findMovie('Die Hard',1988)) == 1
     assert len(m.findTVShow('The Brittas Empire')) == 1
-    assert len(m.findMovie('The X-Files')) == 0
+    assert len(m.findTVShow('Brittas Empire')) == 1
+
+    assert len(m.findMovie('The X-Files')) == 1
+    assert len(m.findMovie('X-Files')) == 1
 
     #find tvshow
     assert m.findTVShow('The Brittas Empire')[0].production_year == 1991
+    assert m.findTVShow('Brittas Empire')[0].production_year == 1991
     assert len(m.findTVShow('The X-Files')) == 1
+    assert len(m.findTVShow('X-Files')) == 1
+    assert len(m.findTVShow('X Files')) == 1
+    assert len(m.findTVShow('X Files')) == 1
+    assert len(m.findTVShow('XFiles')) == 1
+    assert len(m.findTVShow('XFILES')) == 1
 
     #test the episode length
     assert m.findTVShow('The X-Files')[0].durationS == 2640
+    assert m.findTVShow('X-Files')[0].durationS == 2640
+
+    assert m.findTVShow('The 24')[0].durationS == 2640
     assert m.findTVShow('24')[0].durationS == 2640
+
     assert m.findTVShow('The Simpsons')[0].durationS == 1320
+    assert m.findTVShow('Simpsons')[0].durationS == 1320

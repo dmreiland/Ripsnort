@@ -10,6 +10,9 @@ class MediaContent:
         self.durationS = 0
         self.scrape_source = None
         self.unique_id = None
+        self.season_number = None
+        self.episode_number = None
+        self.episode_title = None
         
         
     def __repr__(self):

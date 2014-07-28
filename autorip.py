@@ -27,7 +27,6 @@ sys.path.append( os.path.join(dirname,"scraper" ) )
 import scraper
 
 
-
 def contentTypeForTracksAndName(tracks,name,config):
     if len(name) == 0:
         return None
@@ -109,6 +108,44 @@ def tracksUnderDuration(durationMax,discTracks):
     
     return tracksRet
 
+
+def outputFileForTrackWithFormat(track,format):
+    newFilePath = format
+    
+    import re
+    
+    newFilePath = newFilePath.replace('{N}',track.title)
+
+    #season matches
+    for match in re.findall(r'({[S|s].*?})',newFilePath):
+        replacementText = str(track.season_number)
+        padMatches = re.findall(r'\.pad\((\d)\)',match)
+        
+        if len(padMatches) > 0:
+            padNum = int(padMatches[0])
+            replacementText = str(track.season_number).zfill(padNum)
+
+        newFilePath = newFilePath.replace(match,replacementText)
+
+    #episode matches
+    for match in re.findall(r'({[E|e].*?})',newFilePath):
+        replacementText = str(track.episode_number)
+        padMatches = re.findall(r'\.pad\((\d)\)',match)
+        
+        if len(padMatches) > 0:
+            padNum = int(padMatches[0])
+            replacementText = str(track.episode_number).zfill(padNum)
+
+        newFilePath = newFilePath.replace(match,replacementText)
+
+    newFilePath = newFilePath.replace('{T}',track.episode_title)
+
+    newFilePath = newFilePath.replace('{Y}',str(track.production_year))
+
+    assert '{' not in newFilePath
+    assert '}' not in newFilePath
+    
+    return newFilePath
 
 if __name__ == "__main__":
     
@@ -226,8 +263,15 @@ if __name__ == "__main__":
             #rename output file only if there is 1-1 match
             if len(mediaobjs) == 1 and len(ripTracks) == 1:
                 srcFile = os.path.join(ripPathIncomplete,ripper.formattedName(),ripTracks[0].outputFileName)
-                newFileName = mediaobjs[0].title + ' ' + mediaojbs[0].production_year + ripTracks[0].outputFileName.split('.')[-1]
-                dstFile = os.path.join(ripPathComplete,newFileName)
+                
+                if mediaobjs[0].content_type == 'movie':
+                    format = config['ripper']['movie_save_format']
+                elif mediaobjs[0].content_type == 'tvshow':
+                    format = config['ripper']['tv_save_format']
+                
+                newFileName = outputFileForTrackWithFormat(mediaobjs[0],format)
+                newFileExt = ripTracks[0].outputFileName.split('.')[-1]
+                dstFile = os.path.join(ripPathComplete,(newFileName+'.'+newFileExt))
 
                 os.rename(srcFile,dstFile)
                 shutil.rmtree( os.path.join(ripPathIncomplete,ripper.formattedName()) )
