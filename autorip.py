@@ -27,6 +27,62 @@ sys.path.append( os.path.join(dirname,"scraper" ) )
 import scraper
 
 
+def dictTypeConversion(dictionaryCheck):
+    for key in dictionaryCheck:
+        val = dictionaryCheck[key]
+        if type(val) == type({}):
+            val = dictTypeConversion(val)
+        elif type(val) == type(''):
+            val = val.lower().strip()
+            valHasDots = len(val.split('.')) > 1
+            
+            floatVal = None
+            
+            try:
+                floatVal = float(val)
+            except:
+                pass
+
+            intVal = None
+            
+            try:
+                intVal = int(val)
+            except:
+                pass
+            
+            if val == 'no' or val == 'false' or val == 'off':
+                val = False
+            elif val == 'yes' or val == 'true' or val == 'on':
+                val = True
+            elif valHasDots and floatVal is not None:
+                val = floatVal
+            elif intVal is not None:
+                val = intVal
+            else:
+                #undo val changes
+                val = dictionaryCheck[key]
+
+        else:
+            #value is not dict or string
+            pass
+            
+        dictionaryCheck[key] = val
+        
+    return dictionaryCheck
+
+def loadConfigFile(configFile):
+    import ConfigParser
+
+    config = ConfigParser.RawConfigParser()
+    config.read(configFile)
+    
+    d = dict(config._sections)
+    for k in d:
+        d[k] = dict(config._defaults, **d[k])
+        d[k].pop('__name__', None)
+
+    return dictTypeConversion(d)
+
 def contentTypeForTracksAndName(tracks,name,config):
     if len(name) == 0:
         return None
@@ -147,6 +203,7 @@ def outputFileForTrackWithFormat(track,format):
     
     return newFilePath
 
+
 if __name__ == "__main__":
     
     if len(sys.argv) <= 1:
@@ -154,6 +211,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     discdevice=''
+
 
     argsList = sys.argv[1:]
     
@@ -174,7 +232,7 @@ if __name__ == "__main__":
 
     else:
         #load config
-        config = config_to_dict.config_to_dict().do(os.path.join(dirname,'settings.ini'))
+        config = loadConfigFile(os.path.join(dirname,'settings.ini'))
 
         #load ripper, scraper and notification
         notify = notification.notification(config['notification'])
@@ -198,26 +256,26 @@ if __name__ == "__main__":
         ripTracks = []
     
         if contentType == 'movie':
-            if config['ripper']['movie_rip_extras'].lower() == 'yes':
+            if config['ripper']['movie_rip_extras'] == True:
                 minDuration = 0
                 maxDuration = 9999
                 ripExtraContent = True
             else:
-                minDuration = int(config['ripper']['movie_min_length_seconds'])
-                maxDuration = int(config['ripper']['movie_max_length_seconds'])
+                minDuration = config['ripper']['movie_min_length_seconds']
+                maxDuration = config['ripper']['movie_max_length_seconds']
                 ripExtraContent = False
             
             ripPathComplete = config['ripper']['movie_complete_save_path']
             ripPathIncomplete = config['ripper']['movie_incomplete_save_path']
 
         elif contentType == 'tvshow':
-            if config['ripper']['tv_rip_extras'].lower() == 'yes':
+            if config['ripper']['tv_rip_extras'] == True:
                 minDuration = 0
                 maxDuration = 9999
                 ripExtraContent = True
             else:
-                minDuration = int(config['ripper']['tvepisode_min_length_seconds'])
-                maxDuration = int(config['ripper']['tvepisode_max_length_seconds'])
+                minDuration = config['ripper']['tvepisode_min_length_seconds']
+                maxDuration = config['ripper']['tvepisode_max_length_seconds']
                 ripExtraContent = False
 
             ripPathComplete = config['ripper']['tv_incomplete_save_path']
@@ -238,11 +296,11 @@ if __name__ == "__main__":
 
         logging.info( 'Video candidates:' + str(ripTracks) )
 
-        if config['ripper']['backup_disc'] == 'no' and config['ripper']['rip_disc'] == 'no':
+        if config['ripper']['backup_disc'] == False and config['ripper']['rip_disc'] == False:
             logging.error( 'No ripping enabled. Not much to do without either rip_disc or backup_disc set to True' )
             sys.exit(1)
 
-        if config['ripper']['backup_disc'].lower() == 'yes':
+        if config['ripper']['backup_disc'] == True:
             logging.info( 'Making disk backup' )
 
             notify.startedBackingUpDisc(ripper.formattedName())
@@ -251,7 +309,7 @@ if __name__ == "__main__":
 
             notify.finishedBackingUpDisc(ripper.formattedName())
 
-        if config['ripper']['rip_disc'].lower() == 'yes':
+        if config['ripper']['rip_disc'] == True:
             logging.info( 'Ripping disc tracks' )
             
             notify.startedRippingTracks( ripTracks, ripper.formattedName() )
