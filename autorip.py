@@ -17,7 +17,6 @@ sys.path.append( os.path.join(dirname,"ripper") )
 import ripper
 
 sys.path.append( os.path.join(dirname,"dependancies") )
-import config_to_dict
 import dvdfingerprint
 
 sys.path.append( os.path.join(dirname,"notification" ) )
@@ -339,7 +338,7 @@ if __name__ == "__main__":
                 
             #TODO change notify message to include move location
             
-            notify.finishedRippingTracks( ripTracks, ripper.formattedName() )
+            notify.finishedRippingTracks( ripTracks, ripper.formattedName(), mediaobjs )
 
         #lastly eject the tray
         drive.openTray()

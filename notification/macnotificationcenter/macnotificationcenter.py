@@ -29,7 +29,7 @@ class MacNotify:
         
         self._notify(title,subtitle,'',0,True)
 
-    def finishedRippingTracks(self,tracks,discName):
+    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
         title = "Finished ripping: " + discName
         
         totalDurationMins = 0

@@ -74,9 +74,53 @@ class IMDb:
             #fetch detailed response and populate other fields
             resDetail = self.api.find_movie_by_id(mediaobj.unique_id)
             
+            mediaobj.public_url = 'http://www.imdb.com/title/' + mediaobj.unique_id
+            
             if resDetail.runtime is not None:
                 mediaobj.durationS = int(resDetail.runtime) * 60
             
+            try:
+                for photo in resDetail.__dict__['data']['photos']:
+                    mediaobj.photos_urls.append( photo['image']['url'] )
+            except:
+                pass
+            
+            try:
+                for photo in resDetail.__dict__['data']['photos']:
+                    mediaobj.photos_urls.append( photo['image']['url'] )
+            except:
+                pass
+            
+            try:
+                mediaobj.poster_urls.append( resDetail['trailer_img_url'] )
+            except:
+                pass
+            
+            try:
+                mediaobj.poster_urls.append( resDetail['poster_url'] )
+            except:
+                pass
+            
+            try:
+                mediaobj.poster_urls.append( resDetail['cover_url'] )
+            except:
+                pass
+
+            try:
+                mediaobj.poster_urls.append( resDetail.__dict__['data']['image']['url'] )
+            except:
+                pass
+        
+            try:
+                mediaobj.plot_outline = resDetail.plot_outline
+            except:
+                pass
+                
+            try:
+                mediaobj.genres = resDetail.__dict__['data']['genres']
+            except:
+                pass
+
             if resDetail.type == 'tv_series':
                 mediaobj.content_type = 'tvshow'
             elif resDetail.type == 'feature':
@@ -90,6 +134,7 @@ class IMDb:
 if __name__ == "__main__":
     m = IMDb()
     #find movie
+    
     assert len(m.findMovie('The Ant Bully')) == 1
     assert len(m.findMovie('Ant Bully')) == 1
 

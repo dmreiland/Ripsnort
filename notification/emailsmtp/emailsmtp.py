@@ -5,6 +5,7 @@
 import logging
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 class EmailSMTP:
@@ -21,7 +22,7 @@ class EmailSMTP:
     def startedBackingUpDisc(self,discName):
         m = MIMEText(discName)
 
-        m['Subject'] = 'Ripsnort - backup started'
+        m['Subject'] = 'Ripsnort - backup ' + discName + ' started'
         m['From'] = self.source_email
         m['To'] = self.destination_email
         
@@ -30,34 +31,49 @@ class EmailSMTP:
     def finishedBackingUpDisc(self,discName):
         m = MIMEText(discName)
 
-        m['Subject'] = 'Ripsnort - backup finished'
+        m['Subject'] = 'Ripsnort - backup ' + discName + ' finished'
         m['From'] = self.source_email
         m['To'] = self.destination_email
         
         self._sendMessage(m.as_string())
         
     def startedRippingTracks(self,tracks,discName):
-        message = "Started ripping " + str(len(tracks)) + " tracks. \n"
+        message = "Started ripping tracks: <br>\n"
 
         for track in tracks:
-            message += "    -" + str(track)
+            message += "  <strong>" + track.outputFileName + "</strong>, " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes<br>\n"
 
-        m = MIMEText(message)
-        m['Subject'] = 'Ripsnort - ripping started'
+        m = MIMEMultipart('alternate')
+        m.attach( MIMEText(message, 'html') )
+
+        m['Subject'] = 'Ripsnort - ripping ' + discName + ' started'
         m['From'] = self.source_email
         m['To'] = self.destination_email
         
         self._sendMessage(m.as_string())
         
-    def finishedRippingTracks(self,tracks,discName):
-        message = "Finished ripping " + str(len(tracks)) + " tracks. \n"
+    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
+        message = "Finished ripping tracks: <br>\n"
 
         for track in tracks:
-            message += "    -" + track.outputFileName + ", " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes\n"
+            message += "  <strong>" + track.outputFileName + "</strong>, " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes<br>\n"
+            
+        if len(mediaObjects) > 0:
+            message += "<br><hr><br>\n"
+            message += mediaObjects[0].title + " (" + str(mediaObjects[0].production_year) + ") <br>\b"
+            message += mediaObjects[0].plot_outline + "<br>\n"
+            message += "Genres: " + " ".join( mediaObjects[0].genres ) + "<br>\n"
+            
+            if mediaObjects[0].season_number is not None:
+                message += "Season: " + mediaObjects[0].season_number + "<br>\n"
+                
+            if mediaObjects[0].public_url is not None:
+                message += "<a href=" + mediaObjects[0].public_url + ">Public link</a>"
 
-        m = MIMEText(message)
+        m = MIMEMultipart('alternate')
+        m.attach( MIMEText(message, 'html') )
 
-        m['Subject'] = 'Ripsnort - ripping finished'
+        m['Subject'] = 'Ripsnort - ripping ' + discName + ' finished'
         m['From'] = self.source_email
         m['To'] = self.destination_email
         
@@ -76,7 +92,23 @@ if __name__ == "__main__":
      email_port=465
      
      s = EmailSMTP({'smtp_server':email_server,'smtp_username':email_source,'smtp_password':email_password,'smtp_port':email_port,'smtp_source_email':email_source,'smtp_destination_email':email_source})
-     s.startedBackingUpDisc('test message')
-     s.finishedBackingUpDisc('test message')
-     s.startedRippingTracks([],'test message')
-     s.finishedRippingTracks([],'test message')
+     s.startedBackingUpDisc('DiscName')
+     s.finishedBackingUpDisc('DiscName')
+     s.startedRippingTracks([],'DiscName')
+
+     import os
+     import sys
+     dirname = os.path.dirname(os.path.realpath( __file__ ))
+
+     sys.path.append( os.path.join(dirname,"..","..","scraper") )
+     import MediaContent
+     
+     m = MediaContent.MediaContent()
+     m.title = 'The Ant Bully'
+     m.production_year = 2006
+     m.plot_outline = """Plot line movie"""
+     m.genres = ['Comedy','Animation']
+     m.public_url = 'http://www.imdb.com/title/tt0429589'
+
+     
+     s.finishedRippingTracks([],'DiscName',[m])

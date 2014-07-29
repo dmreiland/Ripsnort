@@ -70,7 +70,7 @@ class AudioNotify:
         if self.pathSoundClipRipStarted is not None:
             self._playSound( self.pathSoundClipRipStarted )
 
-    def finishedRippingTracks(self,tracks,discName):
+    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
         if self.pathSoundClipRipFinished is not None:
             self._playSound( self.pathSoundClipRipFinished )
         

@@ -13,7 +13,12 @@ class MediaContent:
         self.season_number = None
         self.episode_number = None
         self.episode_title = None
-        
+        self.photos_urls = []
+        self.poster_urls = []
+        self.plot_outline = None
+        self.genres = []
+        self.public_url = None
+
         
     def __repr__(self):
         retStr = "<MediaContent "

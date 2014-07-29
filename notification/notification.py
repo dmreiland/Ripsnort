@@ -42,6 +42,6 @@ class Notification:
         for api in self.apis:
             api.startedRippingTracks(tracks,discName)
         
-    def finishedRippingTracks(self,tracks,discName):
+    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
         for api in self.apis:
-            api.finishedRippingTracks(tracks,discName)
+            api.finishedRippingTracks(tracks,discName,mediaObjects)
