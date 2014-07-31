@@ -21,10 +21,10 @@ class Notification:
             import emailsmtp
             self.apis.append( emailsmtp.EmailSMTP(params) )
 
-        if 'macnotify' in notifyType:
-            sys.path.append(dirname + "/macnotificationcenter/")
-            import macnotificationcenter
-            self.apis.append( macnotificationcenter.MacNotify(params) )
+        if 'localnotify' in notifyType:
+            sys.path.append(dirname + "/localnotify/")
+            import localnotify
+            self.apis.append( localnotify.LocalNotify(params) )
 
         if 'audionotify' in notifyType:
             sys.path.append(dirname + "/audionotify/")
