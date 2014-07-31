@@ -215,10 +215,21 @@ def outputFileForTrackWithFormat(track,format):
     return newFilePath
 
 
+def usage():
+    return """
+usage: [-v] disc
+    -h --help  Prints this usage information.
+    -v --verbose       print extra stuff
+
+example: ./autorip.py -v /dev/disk2
+"""
+
+
 if __name__ == "__main__":
     
     if len(sys.argv) <= 1:
-        print 'Call with drive i.e. autorip.py /dev/disk2'
+        logging.error('No disc argument')
+        print usage()
         sys.exit(1)
 
     discdevice=''
@@ -226,11 +237,26 @@ if __name__ == "__main__":
     argsList = sys.argv[1:]
     
     while ( len(argsList) > 0 ):
-        discdevice = argsList[0]
+        arg = argsList[0]
+
+        if arg == '-h' or arg == '--h' or arg == '--help':
+            print usage()
+            sys.exit(0)
+        
+        if arg == '-v' or arg == '--v' or arg == '--verbose':
+            logging.basicConfig(level=logging.DEBUG)
+            logging.info('Verbose logging enabled')
+
+        elif disc_drive.DiscDrive.doesDeviceExist(arg) == False:
+            print 'Unrecognised disc/argument: \'' + arg + '\''
+            print usage()
+            sys.exit(1)
+        else:
+            discdevice = arg
 
         #Remove last argument
         argsList = argsList[1:]
-        
+
     drive = disc_drive.DiscDrive(discdevice)
     
     if drive.isOpen():

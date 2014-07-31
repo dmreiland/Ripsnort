@@ -16,7 +16,7 @@ OS_LINUX='linux'
 
 class DiscDrive:
     def __init__(self,deviceID):
-        if DiscDrive._doesDeviceExist(deviceID) == False:
+        if DiscDrive.doesDeviceExist(deviceID) == False:
             raise Exception('Invalid disc device: ' + deviceID)
     
         self.deviceID = deviceID
@@ -213,7 +213,7 @@ class DiscDrive:
         return driveNumber
         
     @staticmethod
-    def _doesDeviceExist(deviceName):
+    def doesDeviceExist(deviceName):
         doesExist = False
     
         platformName = platform.system().lower().strip()
