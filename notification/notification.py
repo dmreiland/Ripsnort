@@ -48,3 +48,7 @@ class Notification:
     def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
         for api in self.apis:
             api.finishedRippingTracks(tracks,discName,mediaObjects)
+
+    def failure(self,discName,errorMessage):
+        for api in self.apis:
+            api.failure(discName,errorMessage)

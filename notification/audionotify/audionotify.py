@@ -55,6 +55,13 @@ class AudioNotify:
 
             if not os.path.isfile(self.pathSoundClipRipFinished):
                 AudioNotify._loadSoundUrlToFile(url,self.pathSoundClipRipFinished)
+                
+        if params['audionotify_url_error']:
+            url = params['audionotify_url_error']
+            self.pathSoundClipError = os.path.join(self.temporaryDirectory,'audionotify_url_error')
+            
+            if not os.path.isfile(self.pathSoundClipError):
+                AudioNotify._loadSoundUrlToFile(url,self.pathSoundClipError)
 
         logging.info('AudioNotify initialized with config: ' + str(params))
         
@@ -76,7 +83,11 @@ class AudioNotify:
     def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
         if self.pathSoundClipRipFinished is not None:
             AudioNotify._playSound( self.pathSoundClipRipFinished )
-        
+
+    def failure(self,discName,errorMessage):
+        if self.pathSoundClipError is not None:
+            AudioNotify._playSound( self.pathSoundClipError )
+
     @staticmethod
     def _loadSoundUrlToFile(urlLoad,fileToSave):
         import urllib2

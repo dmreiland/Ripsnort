@@ -321,14 +321,6 @@ if __name__ == "__main__":
             print 'Unexpected content type ' + str(contentType)
             sys.exit(1)
 
-        ripTracks = tracksUnderDuration(maxDuration, tracksOverDuration(minDuration,ripper.discTracks()))
-        
-        if ripExtraContent == False and len(mediaobjs) == 1:
-            #we don't want the extra content and we have an exact match, Use the duration from the media object to filter out erronous matches
-            mediaDurationS = mediaobjs[0].durationS
-            logging.info( 'Filtering results to match duration ' + str(mediaDurationS) )
-            ripTracks = tracksUnderDuration(mediaDurationS * 1.14, tracksOverDuration(mediaDurationS * 0.86,ripTracks))            
-
 
         logging.info( 'Video candidates:' + str(ripTracks) )
 
@@ -345,10 +337,19 @@ if __name__ == "__main__":
 
             notify.finishedBackingUpDisc(ripper.formattedName())
 
+        ripTracks = tracksUnderDuration(maxDuration, tracksOverDuration(minDuration,ripper.discTracks()))
+        
+        if ripExtraContent == False and len(mediaobjs) == 1:
+            #we don't want the extra content and we have an exact match, Use the duration from the media object to filter out erronous matches
+            mediaDurationS = mediaobjs[0].durationS
+            logging.info( 'Filtering results to match duration ' + str(mediaDurationS) )
+            ripTracks = tracksUnderDuration(mediaDurationS * 1.14, tracksOverDuration(mediaDurationS * 0.86,ripTracks))            
+
         if config['ripper']['rip_disc'] == True:
             logging.info( 'Ripping disc tracks' )
             
-            notify.startedRippingTracks( ripTracks, ripper.formattedName() )
+            if len(ripTracks) > 0:
+                notify.startedRippingTracks( ripTracks, ripper.formattedName() )
             
             ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,ripper.formattedName()) )
 
@@ -374,7 +375,10 @@ if __name__ == "__main__":
                 
             #TODO change notify message to include move location
             
-            notify.finishedRippingTracks( ripTracks, ripper.formattedName(), mediaobjs )
+            if len(ripTracks) > 0:
+                notify.finishedRippingTracks( ripTracks, ripper.formattedName(), mediaobjs )
+            else:
+                notify.failure( ripper.formattedName(), 'Failed to locate correct video tracks to rip' )
 
         #lastly eject the tray
         drive.openTray()

@@ -48,6 +48,9 @@ class MacNotify:
         
         self._notify(title,subtitle,message,0,True)
 
+    def failure(self,discName,errorMessage):
+        self._notify('Error with disc: ' + discName,'',errorMessage,0,True)
+
     def _notify(self, title, subtitle, info_text, delay=0, sound=False):
         import platform
 
@@ -65,9 +68,15 @@ class MacNotify:
             NSURL = objc.lookUpClass('NSURL')
 
             notification = NSUserNotification.alloc().init()
-            notification.setTitle_(title)
-            notification.setSubtitle_(subtitle)
-            notification.setInformativeText_(info_text)
+
+            if title is not None:
+                notification.setTitle_(title)
+
+            if subtitle is not None:
+                notification.setSubtitle_(subtitle)
+            
+            if info_text is not None:
+                notification.setInformativeText_(info_text)
             
             urlObj = NSURL.alloc().initWithString_('https://raw.githubusercontent.com/Ryandev/Ripsnort/master/assets/logo200px.png')
             imageObj = NSImage.alloc().initWithContentsOfURL_(urlObj)
@@ -80,7 +89,6 @@ class MacNotify:
             notification.setDeliveryDate_(Foundation.NSDate.dateWithTimeInterval_sinceDate_(delay, Foundation.NSDate.date()))
             NSUserNotificationCenter.defaultUserNotificationCenter().scheduleNotification_(notification)
             logging.info("Notification sent: " + title)
-
         
 if __name__ == "__main__":     
      m = MacNotify({})

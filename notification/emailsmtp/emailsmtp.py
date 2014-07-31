@@ -81,7 +81,17 @@ class EmailSMTP:
         m['To'] = self.destination_email
         
         self._sendMessage(m.as_string())
-        
+
+    def failure(self,discName,errorMessage):
+        m = MIMEMultipart('alternate')
+        m.attach( MIMEText(errorMessage, 'html') )
+
+        m['Subject'] = 'Ripsnort ' + discName + ' error'
+        m['From'] = self.source_email
+        m['To'] = self.destination_email
+
+        self._sendMessage(m.as_string())
+
     def _sendMessage(self,message):
         logging.info('Sending email: ' + message)
         self.smtp = smtplib.SMTP_SSL(self.server,self.port)
