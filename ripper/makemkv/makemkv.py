@@ -29,10 +29,11 @@ class MakeMKV:
     attributeids = server_settings['attibute_ids']
 
     def __init__(self,deviceID):
-        #replace is a workaround til I figure out naming scheme for devices
+        #TODO replace is a workaround til I figure out naming scheme for devices
         deviceID = deviceID.replace('/dev/disk','/dev/rdisk')
     
-        MakeMKV.binpath = MakeMKV._makeMkvPath()
+        if MakeMKV.binpath == None:
+            MakeMKV.binpath = MakeMKV._makeMkvPath()
     
         self.deviceID = deviceID
         self.discInfoRaw = MakeMKV._discInfoRawFromDevice(deviceID)
@@ -63,7 +64,7 @@ class MakeMKV:
                 
                 nfoFile = track.outputFileName.replace('.mkv','.nfo')
                 
-                with open(pathSave + '/' + nfoFile, 'w') as outfile:
+                with open(os.path.join(pathSave,nfoFile), 'w') as outfile:
                     json.dump(track.serialize(), outfile)
 
             except subprocess.CalledProcessError as e:
@@ -92,12 +93,18 @@ class MakeMKV:
 
         if platformName == 'darwin':
             filepath = '/Applications/MakeMKV.app/Contents/MacOS/makemkvcon'
+
         elif platformName == 'windows':
             logging.error( 'No windows support yet' )
             sys.exit(1)
+
         elif platformName == 'linux':
-            logging.error( 'No linux support yet' )
-            sys.exit(1)
+            try:
+                filepath = subprocess.check_output(['which','makemkvcon']).strip()
+            except subprocess.CalledProcessError as e:
+                logging.error( 'Failed to call makemkv: ' + str(e.output) )
+                sys.exit(1)
+
             
         return filepath
 
