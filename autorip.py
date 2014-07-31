@@ -73,6 +73,8 @@ def dictTypeConversion(dictionaryCheck):
 
 def loadConfigFile(configFile):
     import ConfigParser
+    
+    logging.info('Loading file: ' + str(configFile))
 
     config = ConfigParser.RawConfigParser()
     config.read(configFile)
@@ -81,12 +83,16 @@ def loadConfigFile(configFile):
     for k in d:
         d[k] = dict(config._defaults, **d[k])
         d[k].pop('__name__', None)
+    
+    logging.info('Loaded dictionary: ' + str(d))
 
     return dictTypeConversion(d)
 
 def contentTypeForTracksAndName(tracks,name,config):
     if len(name) == 0:
         return None
+            
+    logging.debug('Determining content type for tracks: ' + str(tracks) + ' track name: ' + str(name))
 
     contentType = None
     
@@ -131,17 +137,19 @@ def contentTypeForTracksAndName(tracks,name,config):
             durationsAreCloseToAverage = True
             
             for track in tracksTV:
-                if abs(track.durationTotalS / durationAverage) < 0.9 or abs(track.durationTotalS / durationAverage) > 1.1:
+                if abs(track.durationS / durationAverage) < 0.9 or abs(track.durationS / durationAverage) > 1.1:
                     durationsAreCloseToAverage = False
                     break
-                    
+            
+            logging.debug('Average track duration: ' + str(durationAverage) + ' durationsAreClose: ' + str(durationsAreCloseToAverage))
+            
             if durationsAreCloseToAverage:
                 contentType = 'tvshow'
             else:
                 #durations don't all match, assume its a movie
                 contentType = 'movie'
     
-    logging.debug('Content type for name:' + name + ', tracks:' + str(tracks) + ' = ' + contentType)
+    logging.info('Content type for name:' + name + ', tracks:' + str(tracks) + ' = ' + contentType)
     
     return contentType
 
@@ -168,6 +176,8 @@ def tracksUnderDuration(durationMax,discTracks):
 
 def outputFileForTrackWithFormat(track,format):
     newFilePath = format
+    
+    logging.debug('Loading output file format: ' + format + ' for track: ' + track)
     
     import re
     
@@ -239,11 +249,11 @@ if __name__ == "__main__":
         
         ripper = ripper.Ripper(config['ripper'],discdevice)
 
-        logging.info( 'Format name: ' + ripper.formattedName())
+        logging.info('Formatted disc name: ' + ripper.formattedName())
 
         contentType = contentTypeForTracksAndName(ripper.discTracks(),ripper.formattedName(),config)
         
-        logging.info( 'Content type: ' + contentType )
+        logging.info('Content type: ' + contentType)
 
         mediascraper = scraper.MediaScraper(config['scraper'])
         

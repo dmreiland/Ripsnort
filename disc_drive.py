@@ -6,6 +6,7 @@ import os
 import sys
 import subprocess
 import logging
+import platform
 
 
 OS_MAC='mac'
@@ -15,9 +16,11 @@ OS_LINUX='linux'
 
 class DiscDrive:
     def __init__(self,deviceID):
+        if DiscDrive._doesDeviceExist(deviceID) == False:
+            raise Exception('Invalid disc device: ' + deviceID)
+    
         self.deviceID = deviceID
         
-        import platform
         platformName = platform.system().lower().strip()
 
         if platformName == 'darwin':
@@ -30,12 +33,15 @@ class DiscDrive:
             self.osType = OS_LINUX
             logging.error( 'No linux support yet' )
             sys.exit(1)
-            
+
         #mac only supported at the moment
         assert self.osType == OS_MAC
+        
+        logging.info('Initialised DiscDrive for device: ' + self.deviceID + ' on platform: ' + self.osType)
 
     def isOpen(self):
         isOpen = False
+
         if self.osType == OS_MAC:
             try:
                 statusStdout = subprocess.check_output(['drutil','-drive',str(self._macDriveNumber()),'status'])
@@ -46,10 +52,23 @@ class DiscDrive:
             if 'No Media Inserted' in statusStdout:
                 isOpen = True
 
+        elif self.osType == OS_WIN:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        elif self.osType == OS_LINUX:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)
+
         return isOpen
 
     def isClosed(self):
         isClosed = False
+
         if self.osType == OS_MAC:
             try:
                 statusStdout = subprocess.check_output(['drutil','-drive',str(self._macDriveNumber()),'status'])
@@ -59,6 +78,18 @@ class DiscDrive:
                 
             if 'No Media Inserted' not in statusStdout:
                 isClosed = True
+
+        elif self.osType == OS_WIN:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        elif self.osType == OS_LINUX:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)            
 
         return isClosed
     
@@ -70,6 +101,17 @@ class DiscDrive:
                 logging.error( 'Failed to close tray ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)
 
+        elif self.osType == OS_WIN:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        elif self.osType == OS_LINUX:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)
     #eject
     def openTray(self):
         if self.osType == OS_MAC:
@@ -79,6 +121,17 @@ class DiscDrive:
                 print( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)
 
+        elif self.osType == OS_WIN:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        elif self.osType == OS_LINUX:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)
     def isDiscInserted(self):
         isInserted = False
 
@@ -93,7 +146,18 @@ class DiscDrive:
                 if line.startswith(self.deviceID):
                     isInserted = True
                     break
-        
+
+        elif self.osType == OS_WIN:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        elif self.osType == OS_LINUX:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)        
         return isInserted
     
     def mountedPath(self):
@@ -112,20 +176,33 @@ class DiscDrive:
                         mountedPath = line.split('on')[1].split('(')[0].strip()
                         break
 
+        elif self.osType == OS_WIN:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        elif self.osType == OS_LINUX:
+            logging.error('No windows support yet')
+            sys.exit(1)
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)
+
         return mountedPath
         
     def mountedDiscName(self):
-        discNath = None
+        discName = None
     
         if self.isDiscInserted(self):
             mountPath = self.mountedPath()
             discName = os.path.basename(mountPath)
 
-        return mountedPath
+        return discName
         
     def _macDriveNumber(self):
         driveNumber = None
         
+        #Loop through calling status on drives 1-9 until the output shows deviceID
         for driveCheck in range(1,9):
             driveOutput = subprocess.check_output(['drutil','status','-drive',str(driveCheck)])
 
@@ -134,5 +211,27 @@ class DiscDrive:
                 break
         
         return driveNumber
+        
+    @staticmethod
+    def _doesDeviceExist(deviceName):
+        doesExist = False
+    
+        platformName = platform.system().lower().strip()
+
+        if platformName == 'darwin':
+            doesExist = os.path.exists(deviceName)
+
+        elif platformName == 'windows':
+            logging.error( 'No windows support yet' )
+            sys.exit(1)
+
+        elif platformName == 'linux':
+            logging.error( 'No linux support yet' )
+            sys.exit(1)            
+
+        else:
+            logging.error('Undefined OS: ' + self.osType)
+            sys.exit(1)
             
+        return doesExist
 

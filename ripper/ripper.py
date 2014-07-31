@@ -4,7 +4,7 @@
 
 import os
 import sys
-import re
+import logging
 
 
 class Ripper:
@@ -17,7 +17,12 @@ class Ripper:
         if scraperType.lower() == 'makemkv':
             sys.path.append(dirname + "/makemkv")
             import makemkv
-            self.api = makemkv.makeMKV(deviceID)
+            self.api = makemkv.MakeMKV(deviceID)
+            
+        logging.info('Initialized with api: ' + str(self.api))
+        
+    def __repr__(self):
+        return "<Ripper>"
 
     def ripDiscTracks(self,tracks,pathSave):
         return self.api.ripDiscTracks(tracks,pathSave)

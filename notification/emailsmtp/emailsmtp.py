@@ -17,7 +17,10 @@ class EmailSMTP:
         self.destination_email = params['smtp_destination_email']
         self.source_email = params['smtp_source_email']
         
-        logging.debug('EmailSMTP initialized with config: ' + str(params))
+        logging.info('EmailSMTP initialized with config: ' + str(params))
+        
+    def __repr__(self):
+        return "<EmailSMTP>"
 
     def startedBackingUpDisc(self,discName):
         m = MIMEText(discName)
@@ -80,11 +83,13 @@ class EmailSMTP:
         self._sendMessage(m.as_string())
         
     def _sendMessage(self,message):
+        logging.info('Sending email: ' + message)
         self.smtp = smtplib.SMTP_SSL(self.server,self.port)
         self.smtp.login(self.username,self.password)
         self.smtp.sendmail(self.source_email,self.destination_email,message)
         self.smtp.quit()
-        
+
+
 if __name__ == "__main__":
      email_source='myemail@gmail.com'
      email_password='mypassword'

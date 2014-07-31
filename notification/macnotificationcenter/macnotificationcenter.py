@@ -8,6 +8,9 @@ import logging
 class MacNotify:
     def __init__(self,params):
         logging.debug('MacNotify initialized with config: ' + str(params))
+        
+    def __repr__(self):
+        return "<MacNotify>"
 
     def startedBackingUpDisc(self,discName):
         title = "Started backing up: " + discName        

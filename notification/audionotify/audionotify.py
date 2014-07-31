@@ -56,23 +56,26 @@ class AudioNotify:
             if not os.path.isfile(self.pathSoundClipRipFinished):
                 AudioNotify._loadSoundUrlToFile(url,self.pathSoundClipRipFinished)
 
-        logging.debug('AudioNotify initialized with config: ' + str(params))
+        logging.info('AudioNotify initialized with config: ' + str(params))
+        
+    def __repr__(self):
+        return "<AudioNotify>"
 
     def startedBackingUpDisc(self,discName):
         if self.pathSoundClipBackupStarted is not None:
-            self._playSound( self.pathSoundClipBackupStarted )
+            AudioNotify._playSound( self.pathSoundClipBackupStarted )
 
     def finishedBackingUpDisc(self,discName):
         if self.pathSoundClipBackupFinished is not None:
-            self._playSound( self.pathSoundClipBackupFinished )
+            AudioNotify._playSound( self.pathSoundClipBackupFinished )
 
     def startedRippingTracks(self,tracks,discName):
         if self.pathSoundClipRipStarted is not None:
-            self._playSound( self.pathSoundClipRipStarted )
+            AudioNotify._playSound( self.pathSoundClipRipStarted )
 
     def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
         if self.pathSoundClipRipFinished is not None:
-            self._playSound( self.pathSoundClipRipFinished )
+            AudioNotify._playSound( self.pathSoundClipRipFinished )
         
     @staticmethod
     def _loadSoundUrlToFile(urlLoad,fileToSave):
@@ -84,7 +87,8 @@ class AudioNotify:
         f.write(response)
         f.close()
 
-    def _playSound(self, soundFile):
+    @staticmethod
+    def _playSound(soundFile):
         import platform
 
         platformName = platform.system().lower().strip()

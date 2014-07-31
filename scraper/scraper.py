@@ -5,6 +5,7 @@
 import os
 import sys
 import re
+import logging
 
 
 from MediaContent import MediaContent
@@ -24,6 +25,11 @@ class MediaScraper:
             sys.path.append(dirname + "/imdb")
             import imdb
             self.api = imdb.IMDb()
+            
+        logging.info('Initialized with api: ' + str(self.api))
+        
+    def __repr__(self):
+        return "<Scraper>"
 
     def findMovie(self,movie,year=None):
         movie = movie.strip()

@@ -21,7 +21,7 @@ from disc_track import disc_track
 from config_to_dict import *
 
 
-class makeMKV:
+class MakeMKV:
     newlinechar = '\n'
     colpattern = re.compile(r'''((?:[^,"']|"[^"]*"|'[^']*')+)''')
     binpath=None
@@ -32,17 +32,20 @@ class makeMKV:
         #replace is a workaround til I figure out naming scheme for devices
         deviceID = deviceID.replace('/dev/disk','/dev/rdisk')
     
-        makeMKV.binpath = makeMKV._makeMkvPath()
+        MakeMKV.binpath = MakeMKV._makeMkvPath()
     
         self.deviceID = deviceID
-        self.discInfoRaw = makeMKV._discInfoRawFromDevice(deviceID)
+        self.discInfoRaw = MakeMKV._discInfoRawFromDevice(deviceID)
         
-        self.mediaDiscTracks = makeMKV._discTracksFromDictionary( makeMKV._deserializeDiscInfo(self.discInfoRaw) )
+        self.mediaDiscTracks = MakeMKV._discTracksFromDictionary( MakeMKV._deserializeDiscInfo(self.discInfoRaw) )
         
-        driveInfo = makeMKV._driveInfoRawFromDevice(deviceID)
+        driveInfo = MakeMKV._driveInfoRawFromDevice(deviceID)
 
-        self.formattedDiscName = makeMKV._cleanDiscName( makeMKV._readTitleFromDriveInfo(driveInfo,deviceID) )
-        self.driveNumber = makeMKV._driveNumber(driveInfo,deviceID)
+        self.formattedDiscName = MakeMKV._cleanDiscName( MakeMKV._readTitleFromDriveInfo(driveInfo,deviceID) )
+        self.driveNumber = MakeMKV._driveNumber(driveInfo,deviceID)
+        
+    def __repr__(self):
+        return "<MakeMKV>"
         
     def formattedName(self):
         return self.formattedDiscName
@@ -56,7 +59,7 @@ class makeMKV:
             
         for track in tracks:
             try:
-                save = subprocess.check_output([makeMKV.binpath,'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave])
+                save = subprocess.check_output([MakeMKV.binpath,'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave])
                 
                 nfoFile = track.outputFileName.replace('.mkv','.nfo')
                 
@@ -72,13 +75,13 @@ class makeMKV:
             os.makedirs(pathSave)
             
         try:
-            save = subprocess.check_output([makeMKV.binpath,'-r','--noscan','--decrypt','disc:' + str(self.driveNumber),pathSave])
+            save = subprocess.check_output([MakeMKV.binpath,'-r','--noscan','--decrypt','disc:' + str(self.driveNumber),pathSave])
         except subprocess.CalledProcessError as e:
             logging.error( 'Failed to save track ' + str(track) + ', reason: **' + str(e.output) + '**' )
             sys.exit(1)
             
     def __repr__(self):
-        return "<makeMKV device:" + self.deviceID +">"
+        return "<MakeMKV device:" + self.deviceID +">"
 
     @staticmethod
     def _makeMkvPath():
@@ -101,7 +104,7 @@ class makeMKV:
     @staticmethod
     def _discInfoRawFromDevice(deviceName):
         try:
-            disc_info = subprocess.check_output([makeMKV.binpath,'--noscan','-r','info','dev:%s' % deviceName])
+            disc_info = subprocess.check_output([MakeMKV.binpath,'--noscan','-r','info','dev:%s' % deviceName])
         except subprocess.CalledProcessError as e:
             logging.error( 'Failed to call makemkv: ' + str(e.output) )
             sys.exit(1)
@@ -111,7 +114,7 @@ class makeMKV:
     @staticmethod
     def _driveInfoRawFromDevice(deviceName):
         try:
-            discs = subprocess.check_output([makeMKV.binpath,'-r','info','disc:%d' % 9999])
+            discs = subprocess.check_output([MakeMKV.binpath,'-r','info','disc:%d' % 9999])
         except subprocess.CalledProcessError as e:
             logging.error( 'Failed to call makemkv: ' + str(e.output) )
             sys.exit(1)
@@ -122,7 +125,7 @@ class makeMKV:
     @staticmethod
     def _readTitleFromDriveInfo(driveInfo,deviceName):
         
-        for line in driveInfo.split(makeMKV.newlinechar):
+        for line in driveInfo.split(MakeMKV.newlinechar):
             line = line.strip().replace('"','')
             if line.startswith('DRV:') and line.endswith(deviceName):
                 return line.split(',')[-2]
@@ -135,7 +138,7 @@ class makeMKV:
         
     @staticmethod
     def _driveNumber(deviceInfo,deviceName):
-        for line in deviceInfo.split(makeMKV.newlinechar):
+        for line in deviceInfo.split(MakeMKV.newlinechar):
             line = line.strip().replace('"','')
             if line.startswith('DRV:') and line.endswith(deviceName):
                 return int( line.split(',')[0].split(':')[1] )
@@ -200,14 +203,14 @@ class makeMKV:
 
         track_id = -1
 
-        for line in discInfoRaw.split(makeMKV.newlinechar):
-            split_line = makeMKV.colpattern.split(line)[1::2]
+        for line in discInfoRaw.split(MakeMKV.newlinechar):
+            split_line = MakeMKV.colpattern.split(line)[1::2]
             if len(split_line) > 1 and split_line[0] != 'TCOUNT':
                 
                 #<  Disc Info
                 if line.startswith('CINFO'):
                     try:
-                        info_out['disc'][makeMKV.attributeids[split_line[0].split(':')[-1]]] = split_line[-1].replace('"','')
+                        info_out['disc'][MakeMKV.attributeids[split_line[0].split(':')[-1]]] = split_line[-1].replace('"','')
                     except KeyError:
                         info_out['disc'][split_line[0].split(':')[-1]] = split_line[-1].replace('"','')
 
@@ -220,7 +223,7 @@ class makeMKV:
                         track_info = info_out['tracks'][track_id] = {'cnts':{'Subtitles':0,'Video':0,'Audio':0}}
 
                     try:
-                        track_info[makeMKV.attributeids[split_line[1]]] = split_line[-1].replace('"','')
+                        track_info[MakeMKV.attributeids[split_line[1]]] = split_line[-1].replace('"','')
                     except KeyError:
                         track_info[split_line[1]] = split_line[-1].replace('"','')
 
@@ -239,7 +242,7 @@ class makeMKV:
                         track_info = info_out['tracks'][track_id]['track_parts'][track_part_id] = {}
 
                     try:
-                        track_info[makeMKV.attributeids[split_line[1]]] = split_line[-1].replace('"','')
+                        track_info[MakeMKV.attributeids[split_line[1]]] = split_line[-1].replace('"','')
                     except KeyError:
                         track_info[split_line[1]] = split_line[-1].replace('"','')
 
@@ -319,32 +322,32 @@ class makeMKV:
 if __name__ == "__main__":
     expectedText1 = 'Bones - Season 7 Disc 1'
 
-    assert expectedText1 == makeMKV._cleanDiscName('BONES_SEASON_7_DISC_1')
-    assert expectedText1 == makeMKV._cleanDiscName('bones_s7_d1')
-    assert expectedText1 == makeMKV._cleanDiscName('bones_season7_d1')
-    assert expectedText1 == makeMKV._cleanDiscName('bones_season_7_d1')
-    assert expectedText1 == makeMKV._cleanDiscName('bones_season_7_d_1')
+    assert expectedText1 == MakeMKV._cleanDiscName('BONES_SEASON_7_DISC_1')
+    assert expectedText1 == MakeMKV._cleanDiscName('bones_s7_d1')
+    assert expectedText1 == MakeMKV._cleanDiscName('bones_season7_d1')
+    assert expectedText1 == MakeMKV._cleanDiscName('bones_season_7_d1')
+    assert expectedText1 == MakeMKV._cleanDiscName('bones_season_7_d_1')
     
     expectedText2 = 'Die Hard'
  
-    assert expectedText2 == makeMKV._cleanDiscName('Die Hard Limited Edition')
-    assert expectedText2 == makeMKV._cleanDiscName('Die Hard limited_Edition')
-    assert expectedText2 == makeMKV._cleanDiscName('Die Hard Special Edition')
-    assert expectedText2 == makeMKV._cleanDiscName('Die Hard special_edition')
-    assert expectedText2 == makeMKV._cleanDiscName('Die Hard Extended Edition')
-    assert expectedText2 == makeMKV._cleanDiscName('DIE_HARD_EXTENDED_EDITION')
+    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Limited Edition')
+    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard limited_Edition')
+    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Special Edition')
+    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard special_edition')
+    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Extended Edition')
+    assert expectedText2 == MakeMKV._cleanDiscName('DIE_HARD_EXTENDED_EDITION')
 
     expectedText3 = 'Bones - Season 8 Disc 1'
 
-    assert expectedText3 == makeMKV._cleanDiscName('BONES_SEASON_8_F1_DISC_1')
-    assert expectedText3 == makeMKV._cleanDiscName('BONES_SEASON_8_F1_D_1')
-    assert expectedText3 == makeMKV._cleanDiscName('BONES_SEASON_8_F1_D1')
+    assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_DISC_1')
+    assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_D_1')
+    assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_D1')
 
     expectedText4 = '24 - Season 2 Disc 2'
 
-    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON2_DISC2')
-    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON2_DISC_2')
-    assert expectedText4 == makeMKV._cleanDiscName('24SEASON2DISC2')
-    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON_2_DISC_2')
-    assert expectedText4 == makeMKV._cleanDiscName('24_SEASON_2_DISK_2')
+    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON2_DISC2')
+    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON2_DISC_2')
+    assert expectedText4 == MakeMKV._cleanDiscName('24SEASON2DISC2')
+    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON_2_DISC_2')
+    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON_2_DISK_2')
 
