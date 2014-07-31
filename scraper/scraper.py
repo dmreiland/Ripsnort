@@ -41,24 +41,32 @@ class MediaScraper:
         results = self.api.findMovie(movie,year)
         
         if len(results) == 0:
+            logging.info('No results found for ' + movie + ', searching for acronyms')
+
             acronyms = MediaScraper._acronymsFromNameWithType(movie,'movie')
+
+            logging.info('Found acronyms: ' + ' '.join(acronyms))
 
             if len(acronyms) == 1:
                 results = self.api.findMovie(acronyms[0],year)
+
+        logging.info('Returning Movies: ' + str(results))
         
         return results
 
     def findTVShow(self,tvshow,year=None):
+    
         tvshow = tvshow.strip()
         
         seasonNumber=MediaScraper._extractSeasonNumberFromName(tvshow)
         
         tvshow = MediaScraper._removeSeasonFromName(tvshow)
         
-        tvshow = re.sub(r'(?i)[_ ]?(d|disc|disk)[_| ]?\d{1,2}','',tvshow)
+        #look for a ' '/'_' followed by 'd'/'disc'/'disk' followed by a number and remove
+        tvshow = re.sub(r'(?i)[_ ](d|disc|disk)[_| ]?\d{1,2}','',tvshow)
         
         tvshow = tvshow.strip()
-        
+
         if tvshow[-1] == '-':
             tvshow = tvshow[0:len(tvshow)-1]
             tvshow = tvshow.strip()
@@ -68,12 +76,18 @@ class MediaScraper:
             tvshow = MediaScraper._removeYearFromName(tvshow)
 
         results = self.api.findTVShow(tvshow,seasonNumber,year)
-        
+
         if len(results) == 0:
+            logging.info('No results found for ' + tvshow + ', searching for acronyms')
+
             acronyms = MediaScraper._acronymsFromNameWithType(tvshow,'tvshow')
-            
+
+            logging.info('Found acronyms: ' + ' '.join(acronyms))
+
             if len(acronyms) == 1:
                 results = self.api.findTVShow(acronyms[0],seasonNumber,year)
+        
+        logging.info('Returning TV shows: ' + ' '.join(results))
         
         return results
             
@@ -140,8 +154,9 @@ class MediaScraper:
     @staticmethod
     def _acronymsFromNameWithType(name,contentType):
         import urllib2
+        import urllib
         
-        url = 'http://www.acronymfinder.com/Slang/'+name+'.html'
+        url = 'http://www.acronymfinder.com/Slang/'+ urllib.quote_plus(name) +'.html'
         response = urllib2.urlopen(url).read()
                 
         candidates = []

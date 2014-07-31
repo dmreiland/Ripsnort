@@ -181,6 +181,15 @@ class MakeMKV:
         if len(seriesRegexMiddleRE.findall(tmpName)) > 0:
             seriesSearch = seriesRegexMiddleRE.search(tmpName)
             tmpName = re.sub(seriesRegexMiddle,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
+            
+        #look for numbers prepended to the end of the last word and add space
+        numberWhitespacing = r'\b(\w+)(\d+)\b$'
+        numberWhitespacingRE = re.compile(numberWhitespacing)
+        
+        if len(numberWhitespacingRE.findall(tmpName)) > 0:
+            whitespaceSearch = numberWhitespacingRE.search(tmpName)
+            tmpName = re.sub(numberWhitespacing,whitespaceSearch.groups()[0] + ' ' + whitespaceSearch.groups()[1],tmpName)
+            
 
         # Clean up
         tmpName = tmpName.replace("\"", "")
@@ -190,6 +199,8 @@ class MakeMKV:
         #capitalize first letter of each word
         tmpName = tmpName.title()
         tmpName = tmpName.strip()
+        
+        logging.info('Converted disc name: ' +title+ ' to ' + tmpName)
 
         return tmpName
 
@@ -336,7 +347,6 @@ if __name__ == "__main__":
     assert expectedText2 == MakeMKV._cleanDiscName('Die Hard special_edition')
     assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Extended Edition')
     assert expectedText2 == MakeMKV._cleanDiscName('DIE_HARD_EXTENDED_EDITION')
-
     expectedText3 = 'Bones - Season 8 Disc 1'
 
     assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_DISC_1')
@@ -350,4 +360,15 @@ if __name__ == "__main__":
     assert expectedText4 == MakeMKV._cleanDiscName('24SEASON2DISC2')
     assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON_2_DISC_2')
     assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON_2_DISK_2')
+
+    expectedText5 = 'Die Hard 2'
+ 
+    assert expectedText5 == MakeMKV._cleanDiscName('Die Hard 2')
+    assert expectedText5 == MakeMKV._cleanDiscName('Die Hard  2')
+    assert expectedText5 == MakeMKV._cleanDiscName('Die Hard2')
+
+    expectedText6 = 'Little Mermaid 2'
+ 
+    assert expectedText6 == MakeMKV._cleanDiscName('LITTLE_MERMAID2')
+
 

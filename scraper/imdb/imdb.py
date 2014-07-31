@@ -4,6 +4,7 @@
 
 import os
 import sys
+import logging
 
 
 dirname = os.path.dirname(os.path.realpath( __file__ ))
@@ -30,15 +31,27 @@ class IMDb:
         return results
         
     def _findMovieAndTV(self,searchWord,year=None):
-    
         #if searchWord starts with 'the' remove it before searching
         if searchWord.lower().startswith('the'):
             searchWord = searchWord[len('the'):len(searchWord)].strip()
     
+        logging.info('Started search for ' + searchWord + ' year ' + str(year))
+    
         resultsByTitle = self.api.find_by_title(searchWord)
         
         filteredByTitle = []
-        
+                        
+        searchCmp = searchWord.lower()
+        searchCmp = searchCmp.replace('-','')
+        searchCmp = searchCmp.replace(',','')
+        searchCmp = searchCmp.replace(':','')
+        searchCmp = searchCmp.replace(' ','')
+            
+        if searchCmp.startswith('the'):
+            searchCmp = searchCmp[len('the'):len(searchCmp)]
+            
+        logging.debug('Comparing to search word ' + str(searchCmp))
+
         for result in resultsByTitle:
             title = result['title']
             title = title.lower()
@@ -50,18 +63,18 @@ class IMDb:
             #remove 'the' prefix
             if title.startswith('the'):
                 title = title[len('the'):len(title)]
-                
-            cmp = searchWord.lower().replace('-','').replace(',','').replace(':','').replace(' ','')
             
-            if cmp.startswith('the'):
-                cmp = cmp[len('the'):len(cmp)]
-            
-            if title == cmp:
+            if title == searchCmp or title.startswith(searchCmp):
+                logging.debug('Matched ' + title)
                 filteredByTitle.append(result)
+                
+        logging.info('Candidates matching title: ' + searchWord + ' candidates:' + str(filteredByTitle))
         
         #filter by year if applicable
         if year is not None:
-            filteredByTitle = filter(lambda x: int(x['year']) == year, resultsByTitle)
+            filteredByTitle = filter(lambda x: int(x['year']) == year, filteredByTitle)
+
+        logging.info('Candidates filtered to year: ' + str(year) + ' candidates:' + str(filteredByTitle))
         
         mediaList = []
         
@@ -124,12 +137,14 @@ class IMDb:
 
             if resDetail.type == 'tv_series':
                 mediaobj.content_type = 'tvshow'
-            elif resDetail.type == 'feature':
+            elif resDetail.type == 'feature' or resDetail.type == 'video':
                 mediaobj.content_type = 'movie'
             
             if mediaobj.content_type is not None:
                 mediaList.append(mediaobj)
         
+        print 'Returning candidates: ' + str(mediaList)
+
         return mediaList
 
 if __name__ == "__main__":
