@@ -9,7 +9,6 @@ import logging
 class AudioNotify:
     def __init__(self,params):
         self.temporaryDirectory = None
-        
         import platform
 
         platformName = platform.system().lower().strip()
@@ -110,6 +109,8 @@ class AudioNotify:
         if platformName == 'darwin':
             subprocess.check_output(['afplay',soundFile])
 
+        elif platformName == 'linux':
+            subprocess.check_output(['aplay',soundFile])
         
 if __name__ == "__main__":
      params = {}
@@ -117,6 +118,7 @@ if __name__ == "__main__":
      params['audionotify_url_backupfinished'] = None
      params['audionotify_url_ripstarted'] = 'http://soundbible.com/grab.php?id=1997&type=wav'
      params['audionotify_url_ripfinished'] = None
+     params['audionotify_url_error'] = 'http://soundbible.com/grab.php?id=1997&type=wav'
 
      m = AudioNotify(params)
      m.startedBackingUpDisc('MOVIENAME')
