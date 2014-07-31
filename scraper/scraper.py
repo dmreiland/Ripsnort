@@ -37,8 +37,16 @@ class MediaScraper:
         if year is None:
             year = MediaScraper._extractYearFromName(movie)
             movie = MediaScraper._removeYearFromName(movie)
+            
+        results = self.api.findMovie(movie,year)
+        
+        if len(results) == 0:
+            acronyms = MediaScraper._acronymsFromNameWithType(movie,'movie')
 
-        return self.api.findMovie(movie,year)
+            if len(acronyms) == 1:
+                results = self.api.findMovie(acronyms[0],year)
+        
+        return results
 
     def findTVShow(self,tvshow,year=None):
         tvshow = tvshow.strip()
@@ -59,7 +67,16 @@ class MediaScraper:
             year = MediaScraper._extractYearFromName(tvshow)
             tvshow = MediaScraper._removeYearFromName(tvshow)
 
-        return self.api.findTVShow(tvshow,seasonNumber,year)
+        results = self.api.findTVShow(tvshow,seasonNumber,year)
+        
+        if len(results) == 0:
+            acronyms = MediaScraper._acronymsFromNameWithType(tvshow,'tvshow')
+            
+            if len(acronyms) == 1:
+                results = self.api.findTVShow(acronyms[0],seasonNumber,year)
+        
+        return results
+            
         
     def findContent(self,contentType,searchword):
         if contentType.lower().strip() == 'movie':
@@ -119,11 +136,114 @@ class MediaScraper:
     def _removeSeasonFromName(name):
         nameReturn = re.sub(REGEX_SEASON_MATCH,'',name)
         return nameReturn
+        
+    @staticmethod
+    def _acronymsFromNameWithType(name,contentType):
+        import urllib2
+        
+        url = 'http://www.acronymfinder.com/Slang/'+name+'.html'
+        response = urllib2.urlopen(url).read()
+                
+        candidates = []
+
+        multipleEntrySearchWord = name + ' stands for,'
+
+        if multipleEntrySearchWord.lower() in response.lower():
+            tableStartWord = """<table class="table table-striped result-list">"""
+            tableStartIdx = response.find(tableStartWord) + len(tableStartWord)
+            tableEndWord = """</table>"""
+            tableEndIdx = tableStartIdx + response[tableStartIdx:len(response)].find(tableEndWord)
+
+            resultsSearch = response[tableStartIdx:tableEndIdx]    
+            resultsSearch = resultsSearch.split(r'result-list__body__meaning')
+        
+            #remove first result
+            resultsSearch = resultsSearch[1:len(resultsSearch)]
+
+            for result in resultsSearch:
+                tableClose = r'</td>'
+                tableCloseIdx = result.find(tableClose)
+
+                result = result[2:tableCloseIdx]
+            
+                if result.startswith('<a href'):
+                    result = result[result.find('>')+1:len(result)]
+            
+                if result.endswith('</a>'):
+                    result = result[0:result.find('</a>')]
+
+                candidates.append( result )
+        else:
+            #single entry
+            startSearchWord = name + ' stands for '
+            startSearchIdx = response.find(startSearchWord) + len(startSearchWord)
+            endSearchWord = '. '
+            endSearchIdx = response.find(endSearchWord) + len(endSearchWord)
+            
+            results = response[startSearchIdx:endSearchIdx]
+            
+            candidates.append( results.strip() )
+
+        candidatesContentTypeNotKnown = []
+        
+        for candidate in candidates:
+             if '(' not in candidate and ')' not in candidate:
+                 candidatesContentTypeNotKnown.append(candidate)
+
+        if contentType.lower() == 'movie':
+            candidatesA = filter(lambda x: 'movie' in x.lower(), candidates)
+            candidatesB = filter(lambda x: 'tv movie' in x.lower(), candidates)
+            candidatesC = filter(lambda x: 'feature' in x.lower(), candidates)
+            
+            candidates = candidatesA + candidatesB + candidatesC
+
+        elif contentType.lower() == 'tvshow':
+            candidatesA = filter(lambda x: 'tv show' in x.lower(), candidates)
+            candidatesB = filter(lambda x: 'tv series' in x.lower(), candidates)
+            
+            candidates = candidatesA + candidatesB
+        
+        for i in range(0,len(candidates)):
+            candidate = candidates[i]
+            replacement = re.sub('\(.*\).?$','',candidate).strip()
+            candidates[i] = replacement
+            
+        #Add the unlabelled content types too
+        candidates += candidatesContentTypeNotKnown
+        
+        #clean values
+        for i in range(0,len(candidates)):
+            candidate = candidates[i]
+
+            #If the last value ends with dot, remove it
+            if candidate[-1] == '.':
+                candidates[i] = candidate[0:-1]
+
+        return candidates
 
 
 if __name__ == "__main__":
-    m = MediaScraper('imdb',{})
-    assert m.findMovie('The Ant Bully')[0].productionYear == 2006
+
+    #Acronym checker
+    assert MediaScraper._acronymsFromNameWithType('koth','tvshow')[0] == 'King of the Hill'
+    assert MediaScraper._acronymsFromNameWithType('HIMYM','tvshow')[0] == 'How I Met Your Mother'
+    assert MediaScraper._acronymsFromNameWithType('baps','movie')[0] == 'Black American Princesses'
+    assert MediaScraper._acronymsFromNameWithType('OFOTCN','movie')[0] == 'One Flew Over the Cuckoo\'s Nest'
+    assert MediaScraper._acronymsFromNameWithType('WWATCF','movie')[0] == 'Willy Wonka and the Chocolate Factory'
+    assert MediaScraper._acronymsFromNameWithType('TGTBATU','movie')[0] == 'The Good, the Bad, and the Ugly'
+    assert MediaScraper._acronymsFromNameWithType('AQOTWF','movie')[0] == 'All Quiet on the Western Front'
+    assert MediaScraper._acronymsFromNameWithType('MPatHG','movie')[0] == 'Monty Python and the Holy Grail'
+    assert MediaScraper._acronymsFromNameWithType('IJATTOD','movie')[0] == 'Indiana Jones and the Temple of Doom'
+    assert MediaScraper._acronymsFromNameWithType('HPATSS','movie')[0] == 'Harry Potter and the Sorcerer\'s Stone'
+    assert MediaScraper._acronymsFromNameWithType('HJNTIY','movie')[0] == 'He\'s Just Not That Into You'
+    assert MediaScraper._acronymsFromNameWithType('THGTTG','movie')[0] == 'The Hitchhiker\'s Guide to the Galaxy'
+
+    m = MediaScraper({'type':'imdb'})
+
+    assert m.findMovie('TGTBATU')[0].production_year == 1966
+    assert m.findMovie('The Good, the Bad, and the Ugly')[0].production_year == 1966
+
+    assert m.findMovie('The Ant Bully')[0].production_year == 2006
     assert MediaScraper._extractYearFromName('Toy Story 3 2017') == None
     assert MediaScraper._extractYearFromName('Toy Story 3') == None
     assert MediaScraper._extractYearFromName('Toy Story 3 1899') == None

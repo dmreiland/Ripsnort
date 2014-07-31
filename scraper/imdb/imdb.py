@@ -44,20 +44,21 @@ class IMDb:
             title = title.lower()
             title = title.replace('-','')
             title = title.replace(':','')
+            title = title.replace(',','')
             title = title.replace(' ','')
             
             #remove 'the' prefix
             if title.startswith('the'):
                 title = title[len('the'):len(title)]
                 
-            cmp = searchWord.lower().replace('-','').replace(':','').replace(' ','')
+            cmp = searchWord.lower().replace('-','').replace(',','').replace(':','').replace(' ','')
             
             if cmp.startswith('the'):
                 cmp = cmp[len('the'):len(cmp)]
             
             if title == cmp:
                 filteredByTitle.append(result)
-                
+        
         #filter by year if applicable
         if year is not None:
             filteredByTitle = filter(lambda x: int(x['year']) == year, resultsByTitle)
