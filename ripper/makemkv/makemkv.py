@@ -42,14 +42,10 @@ class MakeMKV:
         
         driveInfo = MakeMKV._driveInfoRawFromDevice(deviceID)
 
-        self.formattedDiscName = MakeMKV._cleanDiscName( MakeMKV._readTitleFromDriveInfo(driveInfo,deviceID) )
         self.driveNumber = MakeMKV._driveNumber(driveInfo,deviceID)
         
     def __repr__(self):
         return "<MakeMKV>"
-        
-    def formattedName(self):
-        return self.formattedDiscName
     
     def discTracks(self):
         return self.mediaDiscTracks
@@ -128,21 +124,6 @@ class MakeMKV:
             
         return discs
         
-
-    @staticmethod
-    def _readTitleFromDriveInfo(driveInfo,deviceName):
-        
-        for line in driveInfo.split(MakeMKV.newlinechar):
-            line = line.strip().replace('"','')
-            if line.startswith('DRV:') and line.endswith(deviceName):
-                return line.split(',')[-2]
-                
-        import time
-        import calendar
-        epoch = calendar.timegm(time.gmtime())
-
-        return "UNTITLED_" + str(epoch)
-        
     @staticmethod
     def _driveNumber(deviceInfo,deviceName):
         for line in deviceInfo.split(MakeMKV.newlinechar):
@@ -151,65 +132,6 @@ class MakeMKV:
                 return int( line.split(',')[0].split(':')[1] )
 
         return -1
-
-    @staticmethod
-    def _cleanDiscName(title):
-        tmpName = title
-    
-        #remove 'editions' from title
-        tmpName = re.sub('(?i)extended[_| ]?edition','',tmpName,re.IGNORECASE)
-        tmpName = re.sub('(?i)special[_| ]?edition','',tmpName,re.IGNORECASE)
-        tmpName = re.sub('(?i)limited[_| ]?edition','',tmpName,re.IGNORECASE)
-
-        #remove PAL/NTSC
-        tmpName = re.sub('(?i)[_| ]?pal','',tmpName,re.IGNORECASE)
-        tmpName = re.sub('(?i)[_| ]?ntsc','',tmpName,re.IGNORECASE)
-    
-        #check for tv series S7D1 S7_D1
-        seriesRegexShort = '(?i)s([\d{1,2}])_?d([\d{1,2}])'
-        seriesCheckShortRE = re.compile(seriesRegexShort)
-    
-        if len(seriesCheckShortRE.findall(tmpName)) > 0:
-            seriesSearch = seriesCheckShortRE.search(tmpName)
-            tmpName = re.sub(seriesRegexShort,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
-
-        #Season7_Disc1 Series7_Disc1
-        seriesRegexLong = '(?:season|series)_?([\d{1,2}])_?(?:disc|disk|d)_?([\d{1,2}])'
-        seriesCheckLongRE = re.compile(seriesRegexLong, re.IGNORECASE)
-    
-        if len(seriesCheckLongRE.findall(tmpName)) > 0:
-            seriesSearch = seriesCheckLongRE.search(tmpName)
-            tmpName = re.sub(seriesCheckLongRE,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName,re.IGNORECASE)
-    
-        #check for tv series with uncessary middle characters i.e. S7 F1 D1
-        seriesRegexMiddle = '(?i)(?:s|series|season)_?([\d{1,2}]).*(?:d|disc|disk)_?([\d{1,2}])'
-        seriesRegexMiddleRE = re.compile(seriesRegexMiddle)
-    
-        if len(seriesRegexMiddleRE.findall(tmpName)) > 0:
-            seriesSearch = seriesRegexMiddleRE.search(tmpName)
-            tmpName = re.sub(seriesRegexMiddle,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
-            
-        #look for numbers prepended to the end of the last word and add space
-        numberWhitespacing = r'\b(\w+)(\d+)\b$'
-        numberWhitespacingRE = re.compile(numberWhitespacing)
-        
-        if len(numberWhitespacingRE.findall(tmpName)) > 0:
-            whitespaceSearch = numberWhitespacingRE.search(tmpName)
-            tmpName = re.sub(numberWhitespacing,whitespaceSearch.groups()[0] + ' ' + whitespaceSearch.groups()[1],tmpName)
-            
-
-        # Clean up
-        tmpName = tmpName.replace("\"", "")
-        tmpName = tmpName.replace("_", " ")
-        tmpName = tmpName.replace("  ", " ")
-    
-        #capitalize first letter of each word
-        tmpName = tmpName.title()
-        tmpName = tmpName.strip()
-        
-        logging.info('Converted disc name: ' +title+ ' to ' + tmpName)
-
-        return tmpName
 
     @staticmethod
     def _deserializeDiscInfo(discInfoRaw):
@@ -334,48 +256,5 @@ class MakeMKV:
             tracks.append(track)
         
         return tracks
-
-
-
-if __name__ == "__main__":
-    expectedText1 = 'Bones - Season 7 Disc 1'
-
-    assert expectedText1 == MakeMKV._cleanDiscName('BONES_SEASON_7_DISC_1')
-    assert expectedText1 == MakeMKV._cleanDiscName('bones_s7_d1')
-    assert expectedText1 == MakeMKV._cleanDiscName('bones_season7_d1')
-    assert expectedText1 == MakeMKV._cleanDiscName('bones_season_7_d1')
-    assert expectedText1 == MakeMKV._cleanDiscName('bones_season_7_d_1')
-    
-    expectedText2 = 'Die Hard'
- 
-    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Limited Edition')
-    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard limited_Edition')
-    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Special Edition')
-    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard special_edition')
-    assert expectedText2 == MakeMKV._cleanDiscName('Die Hard Extended Edition')
-    assert expectedText2 == MakeMKV._cleanDiscName('DIE_HARD_EXTENDED_EDITION')
-    expectedText3 = 'Bones - Season 8 Disc 1'
-
-    assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_DISC_1')
-    assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_D_1')
-    assert expectedText3 == MakeMKV._cleanDiscName('BONES_SEASON_8_F1_D1')
-
-    expectedText4 = '24 - Season 2 Disc 2'
-
-    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON2_DISC2')
-    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON2_DISC_2')
-    assert expectedText4 == MakeMKV._cleanDiscName('24SEASON2DISC2')
-    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON_2_DISC_2')
-    assert expectedText4 == MakeMKV._cleanDiscName('24_SEASON_2_DISK_2')
-
-    expectedText5 = 'Die Hard 2'
- 
-    assert expectedText5 == MakeMKV._cleanDiscName('Die Hard 2')
-    assert expectedText5 == MakeMKV._cleanDiscName('Die Hard  2')
-    assert expectedText5 == MakeMKV._cleanDiscName('Die Hard2')
-
-    expectedText6 = 'Little Mermaid 2'
- 
-    assert expectedText6 == MakeMKV._cleanDiscName('LITTLE_MERMAID2')
 
 

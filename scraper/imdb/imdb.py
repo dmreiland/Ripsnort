@@ -143,7 +143,7 @@ class IMDb:
             if mediaobj.content_type is not None:
                 mediaList.append(mediaobj)
         
-        print 'Returning candidates: ' + str(mediaList)
+        logging.info('Returning candidates: ' + str(mediaList))
 
         return mediaList
 

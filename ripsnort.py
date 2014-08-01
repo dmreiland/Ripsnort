@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
+import re
 import os
 import sys
 import shutil
@@ -71,6 +72,7 @@ def dictTypeConversion(dictionaryCheck):
         
     return dictionaryCheck
 
+
 def loadConfigFile(configFile):
     import ConfigParser
     
@@ -87,6 +89,7 @@ def loadConfigFile(configFile):
     logging.info('Loaded dictionary: ' + str(d))
 
     return dictTypeConversion(d)
+
 
 def contentTypeForTracksAndName(tracks,name,config):
     if len(name) == 0:
@@ -215,6 +218,76 @@ def outputFileForTrackWithFormat(track,format):
     return newFilePath
 
 
+def formatDiscName(title):
+    tmpName = title
+
+    #remove 'editions' from title
+    tmpName = re.sub('(?i)extended[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)extended[_| ]?collectors[_| ]?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)extended[_| ]?special[_| ]?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)extended[_| ]?(?:3d)?cut','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)special[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)limited[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)ultimate[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)collectors[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)standard[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)[_| ](?:3d)?retail','',tmpName,re.IGNORECASE)
+
+    #remove PAL/NTSC
+    tmpName = re.sub('(?i)[_| ]?pal','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)[_| ]?ntsc','',tmpName,re.IGNORECASE)
+
+    #remove DVD?Bluray
+    tmpName = re.sub('(?i)[_| ]?dvd','',tmpName,re.IGNORECASE)
+    tmpName = re.sub('(?i)[_| ]?blu[\-|_| ]?ray','',tmpName,re.IGNORECASE)
+
+    #check for tv series S7D1 S7_D1
+    seriesRegexShort = '(?i)s([\d{1,2}])_?d([\d{1,2}])'
+    seriesCheckShortRE = re.compile(seriesRegexShort)
+    
+    if len(seriesCheckShortRE.findall(tmpName)) > 0:
+        seriesSearch = seriesCheckShortRE.search(tmpName)
+        tmpName = re.sub(seriesRegexShort,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
+
+    #Season7_Disc1 Series7_Disc1
+    seriesRegexLong = '(?:season|series)_?([\d{1,2}])_?(?:disc|disk|d)_?([\d{1,2}])'
+    seriesCheckLongRE = re.compile(seriesRegexLong, re.IGNORECASE)
+    
+    if len(seriesCheckLongRE.findall(tmpName)) > 0:
+        seriesSearch = seriesCheckLongRE.search(tmpName)
+        tmpName = re.sub(seriesCheckLongRE,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName,re.IGNORECASE)
+    
+    #check for tv series with uncessary middle characters i.e. S7 F1 D1
+    seriesRegexMiddle = '(?i)(?:s|series|season)_?([\d{1,2}]).*(?:d|disc|disk)_?([\d{1,2}])'
+    seriesRegexMiddleRE = re.compile(seriesRegexMiddle)
+    
+    if len(seriesRegexMiddleRE.findall(tmpName)) > 0:
+        seriesSearch = seriesRegexMiddleRE.search(tmpName)
+        tmpName = re.sub(seriesRegexMiddle,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
+            
+    #look for numbers prepended to the end of the last word and add space
+    numberWhitespacing = r'\b(\w+)(\d+)\b$'
+    numberWhitespacingRE = re.compile(numberWhitespacing)
+        
+    if len(numberWhitespacingRE.findall(tmpName)) > 0:
+        whitespaceSearch = numberWhitespacingRE.search(tmpName)
+        tmpName = re.sub(numberWhitespacing,whitespaceSearch.groups()[0] + ' ' + whitespaceSearch.groups()[1],tmpName)
+            
+
+    # Clean up
+    tmpName = tmpName.replace("\"", "")
+    tmpName = tmpName.replace("_", " ")
+    tmpName = tmpName.replace("  ", " ")
+    
+    #capitalize first letter of each word
+    tmpName = tmpName.title()
+    tmpName = tmpName.strip()
+        
+    logging.info('Converted disc name: ' +title+ ' to ' + tmpName)
+
+    return tmpName
+
+
 def usage():
     return """
 usage: [-v] disc
@@ -274,16 +347,18 @@ if __name__ == "__main__":
         notify = notification.Notification(config['notification'])
         
         ripper = ripper.Ripper(config['ripper'],discdevice)
+        
+        formattedName = formatDiscName(drive.mountedDiscName())
 
-        logging.info('Formatted disc name: ' + ripper.formattedName())
+        logging.info('Formatted disc name: ' + formattedName)
 
-        contentType = contentTypeForTracksAndName(ripper.discTracks(),ripper.formattedName(),config)
+        contentType = contentTypeForTracksAndName(ripper.discTracks(),formattedName,config)
         
         logging.info('Content type: ' + contentType)
 
         mediascraper = scraper.MediaScraper(config['scraper'])
         
-        mediaobjs = mediascraper.findContent(contentType,ripper.formattedName())
+        mediaobjs = mediascraper.findContent(contentType,formattedName)
         
         if len(mediaobjs) is not 1:
             alt_name = dvdfingerprint.disc_title(drive.mountedPath())
@@ -331,11 +406,11 @@ if __name__ == "__main__":
         if config['ripper']['backup_disc'] == True:
             logging.info( 'Making disk backup' )
 
-            notify.startedBackingUpDisc(ripper.formattedName())
+            notify.startedBackingUpDisc(formattedName)
 
-            ripper.ripDiscBackup( os.path.join(ripPathIncomplete,ripper.formattedName()) )
+            ripper.ripDiscBackup( os.path.join(ripPathIncomplete,formattedName) )
 
-            notify.finishedBackingUpDisc(ripper.formattedName())
+            notify.finishedBackingUpDisc(formattedName)
 
         ripTracks = tracksUnderDuration(maxDuration, tracksOverDuration(minDuration,ripper.discTracks()))
         
@@ -349,15 +424,15 @@ if __name__ == "__main__":
             logging.info( 'Ripping disc tracks' )
             
             if len(ripTracks) > 0:
-                notify.startedRippingTracks( ripTracks, ripper.formattedName() )
+                notify.startedRippingTracks( ripTracks, formattedName )
             
-            ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,ripper.formattedName()) )
+            ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,formattedName) )
 
             didMove = False
         
             #rename output file only if there is 1-1 match
             if len(mediaobjs) == 1 and len(ripTracks) == 1:
-                srcFile = os.path.join(ripPathIncomplete,ripper.formattedName(),ripTracks[0].outputFileName)
+                srcFile = os.path.join(ripPathIncomplete,formattedName,ripTracks[0].outputFileName)
                 
                 if mediaobjs[0].content_type == 'movie':
                     format = config['ripper']['movie_save_format']
@@ -369,16 +444,16 @@ if __name__ == "__main__":
                 dstFile = os.path.join(ripPathComplete,(newFileName+'.'+newFileExt))
 
                 os.rename(srcFile,dstFile)
-                shutil.rmtree( os.path.join(ripPathIncomplete,ripper.formattedName()) )
+                shutil.rmtree( os.path.join(ripPathIncomplete,formattedName) )
             
                 didMove = True
                 
             #TODO change notify message to include move location
             
             if len(ripTracks) > 0:
-                notify.finishedRippingTracks( ripTracks, ripper.formattedName(), mediaobjs )
+                notify.finishedRippingTracks( ripTracks, formattedName, mediaobjs )
             else:
-                notify.failure( ripper.formattedName(), 'Failed to locate correct video tracks to rip' )
+                notify.failure( formattedName, 'Failed to locate correct video tracks to rip' )
 
         #lastly eject the tray
         drive.openTray()

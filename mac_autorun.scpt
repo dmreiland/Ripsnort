@@ -16,6 +16,6 @@ set disk_device to "/dev/mydisk"
 
 tell application "Terminal"
     activate
-    set run_cmd to "/usr/bin/python " & formatted_path & "/autorip.py " & disk_device
+    set run_cmd to "/usr/bin/python " & formatted_path & "/ripsnort.py " & disk_device
     do script run_cmd
 end tell

@@ -172,7 +172,7 @@ class DiscDrive:
     def mountedDiscName(self):
         discName = None
     
-        if self.isDiscInserted(self):
+        if self.isDiscInserted():
             mountPath = self.mountedPath()
             discName = os.path.basename(mountPath)
 

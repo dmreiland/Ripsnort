@@ -30,9 +30,6 @@ class Ripper:
     def ripDiscBackup(self,pathSave):
         return self.api.ripDiscBackup(pathSave)
     
-    def formattedName(self):
-        return self.api.formattedName()
-    
     def discTracks(self):
         return self.api.discTracks()
 

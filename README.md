@@ -37,7 +37,7 @@ Running
 
 Example use, call autorip with the disc inserted in device /dev/disk2
 ```
-    ./autorip.py /dev/disk2
+    ./ripsnort.py /dev/disk2
 ```
 once completed, you will receive an email
 

@@ -81,10 +81,8 @@ class LocalNotify:
             imageObj = NSImage.alloc().initWithContentsOfURL_(urlObj)
             
             notification.set_identityImage_(imageObj)
-
-            if sound:
-                notification.setSoundName_("NSUserNotificationDefaultSoundName")
-
+            notification.setSoundName_("NSUserNotificationDefaultSoundName")
+            delay = 0
             notification.setDeliveryDate_(Foundation.NSDate.dateWithTimeInterval_sinceDate_(delay, Foundation.NSDate.date()))
             NSUserNotificationCenter.defaultUserNotificationCenter().scheduleNotification_(notification)
             logging.info("Notification sent: " + title)
