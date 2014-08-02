@@ -11,6 +11,13 @@ import logging
 from MediaContent import MediaContent
 
 
+dirname = os.path.dirname(os.path.realpath( __file__ ))
+
+
+sys.path.append(os.path.join(dirname,"..","dependancies"))
+import requests
+
+
 REGEX_SEASON_MATCH = r'(?i)(?:season|series|s)[_| ]?(\d{1,2})'
 
 
@@ -45,7 +52,7 @@ class MediaScraper:
 
             acronyms = MediaScraper._acronymsFromNameWithType(movie,'movie')
 
-            logging.info('Found acronyms: ' + ' '.join(acronyms))
+            logging.info('Found acronyms: ' + str(acronyms))
 
             if len(acronyms) == 1:
                 results = self.api.findMovie(acronyms[0],year)
@@ -82,12 +89,12 @@ class MediaScraper:
 
             acronyms = MediaScraper._acronymsFromNameWithType(tvshow,'tvshow')
 
-            logging.info('Found acronyms: ' + ' '.join(acronyms))
+            logging.info('Found acronyms: ' + str(acronyms))
 
             if len(acronyms) == 1:
                 results = self.api.findTVShow(acronyms[0],seasonNumber,year)
         
-        logging.info('Returning TV shows: ' + ' '.join(results))
+        logging.info('Returning TV shows: ' + str(results))
         
         return results
             
@@ -156,14 +163,36 @@ class MediaScraper:
         import urllib2
         import urllib
         
+        logging.info('Started search for ' + name + ' contentType ' + contentType)
+
         url = 'http://www.acronymfinder.com/Slang/'+ urllib.quote_plus(name) +'.html'
-        response = urllib2.urlopen(url).read()
-                
+        
+        logging.debug('Fetching url ' + url)
+        
+        req = requests.get(url)
+        response = req.text.encode(req.encoding)
+        
+        logging.debug('Response:\n' + str(response))
+
         candidates = []
 
         multipleEntrySearchWord = name + ' stands for,'
+        singleEntrySearchWord = name + ' stands for '
 
-        if multipleEntrySearchWord.lower() in response.lower():
+        if singleEntrySearchWord.lower() in response.lower():
+            logging.debug('Single match found')
+
+            startSearchWord = name + ' stands for '
+            startSearchIdx = response.find(startSearchWord) + len(startSearchWord)
+            endSearchWord = '. '
+            endSearchIdx = response.find(endSearchWord) + len(endSearchWord)
+            
+            results = response[startSearchIdx:endSearchIdx]
+            
+            candidates.append( results.strip() )
+        elif multipleEntrySearchWord.lower() in response.lower():
+            logging.debug('Multiple matches found')
+
             tableStartWord = """<table class="table table-striped result-list">"""
             tableStartIdx = response.find(tableStartWord) + len(tableStartWord)
             tableEndWord = """</table>"""
@@ -189,15 +218,7 @@ class MediaScraper:
 
                 candidates.append( result )
         else:
-            #single entry
-            startSearchWord = name + ' stands for '
-            startSearchIdx = response.find(startSearchWord) + len(startSearchWord)
-            endSearchWord = '. '
-            endSearchIdx = response.find(endSearchWord) + len(endSearchWord)
-            
-            results = response[startSearchIdx:endSearchIdx]
-            
-            candidates.append( results.strip() )
+            logging.debug('No matches found')
 
         candidatesContentTypeNotKnown = []
         
@@ -238,8 +259,12 @@ class MediaScraper:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
 
     #Acronym checker
+    assert len(MediaScraper._acronymsFromNameWithType('Snow White And The Huntsman','movie')) == 0
+    assert len(MediaScraper._acronymsFromNameWithType('Snow White And The Huntsman Tafe','movie')) == 0
+
     assert MediaScraper._acronymsFromNameWithType('koth','tvshow')[0] == 'King of the Hill'
     assert MediaScraper._acronymsFromNameWithType('HIMYM','tvshow')[0] == 'How I Met Your Mother'
     assert MediaScraper._acronymsFromNameWithType('baps','movie')[0] == 'Black American Princesses'

@@ -9,10 +9,10 @@ import logging
 
 dirname = os.path.dirname(os.path.realpath( __file__ ))
 
-sys.path.append(dirname + "/../")
+sys.path.append(os.path.join(dirname,".."))
 from MediaContent import MediaContent
 
-sys.path.append(dirname + "/../../dependancies/")
+sys.path.append(os.path.join(dirname,"..","..","dependancies"))
 import imdbpie
 
 
@@ -68,13 +68,13 @@ class IMDb:
                 logging.debug('Matched ' + title)
                 filteredByTitle.append(result)
                 
-        logging.info('Candidates matching title: ' + searchWord + ' candidates:' + str(filteredByTitle))
+        logging.info('Candidates matching title: ' + searchWord + ' candidates(' +str(len(filteredByTitle))+ '):' + str(filteredByTitle))
         
         #filter by year if applicable
         if year is not None:
             filteredByTitle = filter(lambda x: int(x['year']) == year, filteredByTitle)
 
-        logging.info('Candidates filtered to year: ' + str(year) + ' candidates:' + str(filteredByTitle))
+        logging.info('Candidates filtered to year: ' + str(year) + ' candidates(' +str(len(filteredByTitle))+ '):' + str(filteredByTitle))
         
         mediaList = []
         
@@ -143,11 +143,20 @@ class IMDb:
             if mediaobj.content_type is not None:
                 mediaList.append(mediaobj)
         
+        if year == None:
+            #remove any candidates that have not yet been released
+            from datetime import date
+            currentYear = date.today().year
+            
+            mediaList = filter(lambda x: x.production_year <= currentYear, mediaList)
+        
         logging.info('Returning candidates: ' + str(mediaList))
 
         return mediaList
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+
     m = IMDb()
     #find movie
     
@@ -157,16 +166,17 @@ if __name__ == "__main__":
     assert m.findMovie('The Ant Bully')[0].production_year == 2006
     assert m.findMovie('Ant Bully')[0].production_year == 2006
 
-    assert len(m.findMovie('The Toy Story 3')) == 1
-    assert len(m.findMovie('Toy Story 3')) == 1
+    assert len(m.findMovie('Cloverfield')) == 1
+    assert len(m.findMovie('The Cloverfield')) == 1
+    assert m.findMovie('The Cloverfield')[0].production_year == 2008
 
-    assert m.findMovie('Toy Story 3')[0].production_year == 2010
+    assert len(m.findMovie('Cloudy with a chance of meatballs 2')) == 1
     assert len(m.findMovie('Die Hard',1988)) == 1
+    assert len(m.findMovie('The X-Files I Want to believe')) == 1
+
     assert len(m.findTVShow('The Brittas Empire')) == 1
     assert len(m.findTVShow('Brittas Empire')) == 1
 
-    assert len(m.findMovie('The X-Files')) == 1
-    assert len(m.findMovie('X-Files')) == 1
 
     #find tvshow
     assert m.findTVShow('The Brittas Empire')[0].production_year == 1991

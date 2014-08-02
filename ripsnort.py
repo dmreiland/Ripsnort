@@ -417,7 +417,7 @@ if __name__ == "__main__":
         if ripExtraContent == False and len(mediaobjs) == 1:
             #we don't want the extra content and we have an exact match, Use the duration from the media object to filter out erronous matches
             mediaDurationS = mediaobjs[0].durationS
-            logging.info( 'Filtering results to match duration ' + str(mediaDurationS) )
+            logging.debug( 'Filtering results(' +str(len(ripTracks))+ ') to match duration ' + str(mediaDurationS) + ' ripTracks ' + str(ripTracks) )
             ripTracks = tracksUnderDuration(mediaDurationS * 1.14, tracksOverDuration(mediaDurationS * 0.86,ripTracks))            
 
         if config['ripper']['rip_disc'] == True:
