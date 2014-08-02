@@ -160,9 +160,8 @@ class MediaScraper:
         
     @staticmethod
     def _acronymsFromNameWithType(name,contentType):
-        import urllib2
         import urllib
-        
+    
         logging.info('Started search for ' + name + ' contentType ' + contentType)
 
         url = 'http://www.acronymfinder.com/Slang/'+ urllib.quote_plus(name) +'.html'
@@ -170,9 +169,9 @@ class MediaScraper:
         logging.debug('Fetching url ' + url)
         
         req = requests.get(url)
-        response = req.text.encode(req.encoding)
+        response = str( req.text.encode('ascii','replace') )
         
-        logging.debug('Response:\n' + str(response))
+        logging.debug('Response:\n-----------------------\n' + response + '\n-----------------------\n')
 
         candidates = []
 

@@ -364,12 +364,14 @@ if __name__ == "__main__":
             alt_name = dvdfingerprint.disc_title(drive.mountedPath())
             mediaobjs = mediascraper.findMovie(alt_name)
     
-        ripTracks = []
+        ripTracks = ripper.discTracks()
     
+        logging.info( 'All video tracks:' + str(ripTracks) )
+
         if contentType == 'movie':
             if config['ripper']['movie_rip_extras'] == True:
                 minDuration = 0
-                maxDuration = 9999
+                maxDuration = 99999
                 ripExtraContent = True
             else:
                 minDuration = config['ripper']['movie_min_length_seconds']
@@ -382,7 +384,7 @@ if __name__ == "__main__":
         elif contentType == 'tvshow':
             if config['ripper']['tv_rip_extras'] == True:
                 minDuration = 0
-                maxDuration = 9999
+                maxDuration = 99999
                 ripExtraContent = True
             else:
                 minDuration = config['ripper']['tvepisode_min_length_seconds']
@@ -395,9 +397,8 @@ if __name__ == "__main__":
         else:
             print 'Unexpected content type ' + str(contentType)
             sys.exit(1)
-
-
-        logging.info( 'Video candidates:' + str(ripTracks) )
+            
+        logging.debug('Content type ' + contentType + ' minDuration ' + str(minDuration) + ' maxDuration ' + str(maxDuration) + ' ripExtraContent ' + str(ripExtraContent))
 
         if config['ripper']['backup_disc'] == False and config['ripper']['rip_disc'] == False:
             logging.error( 'No ripping enabled. Not much to do without either rip_disc or backup_disc set to True' )
@@ -412,8 +413,10 @@ if __name__ == "__main__":
 
             notify.finishedBackingUpDisc(formattedName)
 
-        ripTracks = tracksUnderDuration(maxDuration, tracksOverDuration(minDuration,ripper.discTracks()))
+        ripTracks = tracksUnderDuration(maxDuration, tracksOverDuration(minDuration,ripTracks))
         
+        logging.info( 'Video candidates minDuration(' +str(minDuration)+ ') maxDuration(' +str(maxDuration)+ '):' + str(ripTracks) )
+
         if ripExtraContent == False and len(mediaobjs) == 1:
             #we don't want the extra content and we have an exact match, Use the duration from the media object to filter out erronous matches
             mediaDurationS = mediaobjs[0].durationS
