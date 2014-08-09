@@ -257,7 +257,7 @@ class MediaScraper:
         return candidates
 
 
-if __name__ == "__main__":
+def test():
     logging.basicConfig(level=logging.DEBUG)
 
     #Acronym checker
@@ -294,3 +294,9 @@ if __name__ == "__main__":
     assert MediaScraper._removeYearFromName('Toy Story 3') == 'Toy Story 3'
     assert MediaScraper._removeYearFromName('Toy Story 3 (2010)') == 'Toy Story 3'
     assert MediaScraper._removeYearFromName('Toy Story 3 [2010]') == 'Toy Story 3'
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
+

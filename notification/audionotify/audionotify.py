@@ -111,8 +111,9 @@ class AudioNotify:
 
         elif platformName == 'linux':
             subprocess.check_output(['aplay',soundFile])
-        
-if __name__ == "__main__":
+
+
+def test():
      params = {}
      params['audionotify_url_backupstarted'] = 'http://soundbible.com/grab.php?id=1997&type=wav'
      params['audionotify_url_backupfinished'] = None
@@ -125,3 +126,9 @@ if __name__ == "__main__":
      m.finishedBackingUpDisc('MOVIENAME')
      m.startedRippingTracks([],'MOVIENAME')
      m.finishedRippingTracks([],'MOVIENAME')
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
+

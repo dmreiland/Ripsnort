@@ -91,9 +91,15 @@ class LocalNotify:
             subprocess.check_output(['notify-send','-u','normal',title,subtitle])
 
         
-if __name__ == "__main__":     
+def test():
      m = LocalNotify({})
      m.startedBackingUpDisc('MOVIENAME')
      m.finishedBackingUpDisc('MOVIENAME')
      m.startedRippingTracks([],'MOVIENAME')
      m.finishedRippingTracks([],'MOVIENAME')
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
+

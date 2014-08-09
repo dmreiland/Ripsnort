@@ -100,12 +100,8 @@ class EmailSMTP:
         self.smtp.quit()
 
 
-if __name__ == "__main__":
-     email_source='myemail@gmail.com'
-     email_password='mypassword'
-     email_server='smtp.gmail.com'
-     email_port=465
-     
+def test(email_source,email_password,email_server):
+     email_port = 465
      s = EmailSMTP({'smtp_server':email_server,'smtp_username':email_source,'smtp_password':email_password,'smtp_port':email_port,'smtp_source_email':email_source,'smtp_destination_email':email_source})
      s.startedBackingUpDisc('DiscName')
      s.finishedBackingUpDisc('DiscName')
@@ -127,3 +123,9 @@ if __name__ == "__main__":
 
      
      s.finishedRippingTracks([],'DiscName',[m])
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
+

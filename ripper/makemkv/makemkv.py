@@ -18,6 +18,7 @@ sys.path.append(os.path.join(dirname, "../.."))
 sys.path.append(os.path.join(dirname, "../../dependancies"))
 
 from disc_track import disc_track
+import apppath
 
 
 def loadConfigFile(configFile):
@@ -41,16 +42,12 @@ def loadConfigFile(configFile):
 class MakeMKV:
     newlinechar = '\n'
     colpattern = re.compile(r'''((?:[^,"']|"[^"]*"|'[^']*')+)''')
-    binpath=None
     server_settings = loadConfigFile(os.path.join(dirname,'makemkv.ini'))
     attributeids = server_settings['attibute_ids']
 
     def __init__(self,deviceID):
         #TODO replace is a workaround til I figure out naming scheme for devices
         deviceID = deviceID.replace('/dev/disk','/dev/rdisk')
-    
-        if MakeMKV.binpath == None:
-            MakeMKV.binpath = MakeMKV._makeMkvPath()
     
         self.deviceID = deviceID
         self.discInfoRaw = MakeMKV._discInfoRawFromDevice(deviceID)
@@ -77,7 +74,7 @@ class MakeMKV:
             
         for track in tracks:
             try:
-                cmdargs = [MakeMKV.binpath,'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave]
+                cmdargs = [apppath.makemkvcon(),'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave]
                 logging.info('Running command: ' + ' '.join(cmdargs))
                 exitCode = subprocess.call(cmdargs)
                 
@@ -103,7 +100,7 @@ class MakeMKV:
             os.makedirs(pathSave)
             
         try:
-            exitCode = subprocess.call([MakeMKV.binpath,'-r','--noscan','--decrypt','disc:' + str(self.driveNumber),pathSave])
+            exitCode = subprocess.call([apppath.makemkvcon(),'-r','--noscan','--decrypt','disc:' + str(self.driveNumber),pathSave])
             
             if exitCode == 0:
                 didRip = True
@@ -116,36 +113,9 @@ class MakeMKV:
         return "<MakeMKV device:" + self.deviceID +">"
 
     @staticmethod
-    def _makeMkvPath():
-        filepath = None
-
-        import platform
-        platformName = platform.system().lower().strip()
-
-        if platformName == 'darwin':
-            filepath = '/Applications/MakeMKV.app/Contents/MacOS/makemkvcon'
-
-        elif platformName == 'windows':
-            logging.error( 'No windows support yet' )
-            sys.exit(1)
-
-        elif platformName == 'linux':
-            try:
-                cmdargs = ['which','makemkvcon']
-                logging.info('Running command: ' + ' '.join(cmdargs))
-                filepath = subprocess.check_output(cmdargs).strip()
-            except subprocess.CalledProcessError as e:
-                logging.error( 'Failed to call makemkv: ' + str(e.output) )
-                sys.exit(1)
-                
-        logging.debug('MakeMKV path set to: ' + filepath)
-            
-        return filepath
-
-    @staticmethod
     def _discInfoRawFromDevice(deviceName):
         try:
-            cmdargs = [MakeMKV.binpath,'--noscan','-r','info','dev:%s' % deviceName]
+            cmdargs = [apppath.makemkvcon(),'--noscan','-r','info','dev:%s' % deviceName]
             logging.info('Running command: ' + ' '.join(cmdargs))
             cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             cmd.wait()
@@ -162,7 +132,7 @@ class MakeMKV:
     @staticmethod
     def _driveInfoRawFromDevice(deviceName):
         try:
-            cmdargs = [MakeMKV.binpath,'-r','info','disc:%d' % 9999]
+            cmdargs = [apppath.makemkvcon(),'-r','info','disc:%d' % 9999]
             logging.info('Running command: ' + ' '.join(cmdargs))
             cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             cmd.wait()

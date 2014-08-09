@@ -8,13 +8,17 @@ import sys
 import logging
 
 
+import apppath
+
+
 COMPARE_MATCH_MIN_RATIO = 0.8
 
 
 class Caption:
-    def __init__(self,text):
+    def __init__(self,text,language):
         self.text = text
-        logging.info('Initialized with text ' + text)
+        self.language = language
+        logging.info('Initialized with text ' + str(text) + ', lang:' + language)
         
     def compareText(self,compareCaption):
         import difflib
@@ -28,7 +32,7 @@ class Caption:
         return matchRatio
         
     def __repr__(self):
-        return '<Caption \'' + self.text + '\'>'
+        return '<Caption lan:' +self.language+ ' \'' + str(self.text) + '\'>'
 
     def __eq__(self,cmp):
         if isinstance(cmp, Caption):
@@ -51,7 +55,7 @@ class SRTCaption(Caption):
         Caption.__init__(self,self.text)
         
     def __repr__(self):
-        return '<SRTCaption \'' + self.text + '\'>'
+        return '<SRTCaption lan:' +self.language+ ' \'' + self.text + '\'>'
 
     @staticmethod
     def _extractTextFromSRT(srtText):
@@ -71,25 +75,61 @@ class SRTCaption(Caption):
 
 
 class VobSubCaption(Caption):
-    def __init__(self,subRaw,idxRaw):
+    def __init__(self,subRaw,idxRaw,lan):
         self.sub = subRaw
         self.idx = idxRaw
         
-        self.text = VobSubCaption._convertVobSubToSRT(subRaw,idxRaw)
+        self.language = lan
         
-        Caption.__init__(self,self.text)
+        srtData = VobSubCaption._convertVobSubToSRT(subRaw,idxRaw)
+        self.text = SRTCaption(srtData).text
+        
+        Caption.__init__(self,self.text,lan)
         
     def __repr__(self):
-        return '<VobSubCaption \'' + self.text + '\'>'
+        return '<VobSubCaption lan:' +self.language+ ' \'' + str(self.text) + '\'>'
 
     @staticmethod
     def _convertVobSubToSRT(vobsubData,idxData):
-        return None
+        vobsubPath = apppath.vobsub2srt()
+        
+        if vobsubPath is None:
+            return None
+            
+        tmpPath = '/tmp/'
+        tmpSubFile = os.path.join(tmpPath,'subtitle.sub')
+        tmpIdxFile = os.path.join(tmpPath,'subtitle.idx')
+        tmpSrtFile = os.path.join(tmpPath,'subtitle.srt')
+        
+        fSub = open(tmpSubFile,'w')
+        fSub.write(vobsubData)
+        fSub.close()
+        
+        fIdx = open(tmpIdxFile,'w')
+        fIdx.write(vobsubData)
+        fIdx.close()
+        
+        cmdargs = [vobsubPath,tmpSubFile.split('.')[0]]
+
+        cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd.wait()
+        response = cmd.communicate()
+
+        srtData = None
+        
+        if os.path.exists(tmpSrtFile):
+            fSrt = open(tmpSrtFile)
+            srtData = fSrt.read()
+            fSrt.close()
+
+        os.remove(tmpSubFile)
+        os.remove(tmpIdxFile)
+        os.remove(tmpSrtFile)
+        
+        return srtData
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-
+def test():
     textA = '1234567890'
     textB = '0234567890'
     textC = '0034567890'
@@ -108,7 +148,9 @@ if __name__ == "__main__":
     assert cA == cA
     assert cA == cB
     assert cA != cC
-    
 
 
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
 

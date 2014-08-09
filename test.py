@@ -2,54 +2,47 @@
 # -*- coding: utf-8 -*-
 
 
-import ripsnort
+import os
+import sys
+import logging
 
 
-def test_formatName():
-    expectedText1 = 'Bones - Season 7 Disc 1'
+dirname = os.path.dirname(os.path.realpath( __file__ ))
 
-    assert expectedText1 == ripsnort.formatDiscName('BONES_SEASON_7_DISC_1')
-    assert expectedText1 == ripsnort.formatDiscName('bones_s7_d1')
-    assert expectedText1 == ripsnort.formatDiscName('bones_season7_d1')
-    assert expectedText1 == ripsnort.formatDiscName('bones_season_7_d1')
-    assert expectedText1 == ripsnort.formatDiscName('bones_season_7_d_1')
-    
-    expectedText2 = 'Die Hard'
- 
-    assert expectedText2 == ripsnort.formatDiscName('Die Hard Limited Edition')
-    assert expectedText2 == ripsnort.formatDiscName('Die Hard limited_Edition')
-    assert expectedText2 == ripsnort.formatDiscName('Die Hard Special Edition')
-    assert expectedText2 == ripsnort.formatDiscName('Die Hard special_edition')
-    assert expectedText2 == ripsnort.formatDiscName('Die Hard Extended Edition')
-    assert expectedText2 == ripsnort.formatDiscName('DIE_HARD_EXTENDED_EDITION')
-    expectedText3 = 'Bones - Season 8 Disc 1'
 
-    assert expectedText3 == ripsnort.formatDiscName('BONES_SEASON_8_F1_DISC_1')
-    assert expectedText3 == ripsnort.formatDiscName('BONES_SEASON_8_F1_D_1')
-    assert expectedText3 == ripsnort.formatDiscName('BONES_SEASON_8_F1_D1')
+import disc_track
 
-    expectedText4 = '24 - Season 2 Disc 2'
 
-    assert expectedText4 == ripsnort.formatDiscName('24_SEASON2_DISC2')
-    assert expectedText4 == ripsnort.formatDiscName('24_SEASON2_DISC_2')
-    assert expectedText4 == ripsnort.formatDiscName('24SEASON2DISC2')
-    assert expectedText4 == ripsnort.formatDiscName('24_SEASON_2_DISC_2')
-    assert expectedText4 == ripsnort.formatDiscName('24_SEASON_2_DISK_2')
+sys.path.append( os.path.join(dirname,"notification","audionotify") )
+import audionotify
 
-    expectedText5 = 'Die Hard 2'
- 
-    assert expectedText5 == ripsnort.formatDiscName('Die Hard 2')
-    assert expectedText5 == ripsnort.formatDiscName('Die Hard  2')
-    assert expectedText5 == ripsnort.formatDiscName('Die Hard2')
+sys.path.append( os.path.join(dirname,"notification","emailsmtp") )
+import emailsmtp
 
-    expectedText6 = 'Little Mermaid 2'
- 
-    assert expectedText6 == ripsnort.formatDiscName('LITTLE_MERMAID2')
-    
-    return True
+sys.path.append( os.path.join(dirname,"notification","localnotify") )
+import localnotify
+
+sys.path.append( os.path.join(dirname,"notification","macnotificationcenter") )
+import macnotificationcenter
+
+sys.path.append( os.path.join(dirname,"scraper") )
+import scraper
+
+sys.path.append( os.path.join(dirname,"scraper","imdb") )
+import imdb
 
 
 if __name__ == "__main__":
-    assert test_formatName() == True
+    email_source='ripsnort.auto@gmail.com'
+    email_password='Ryan1234'
+    email_server='smtp.gmail.com'
 
+    logging.basicConfig(level=logging.DEBUG)
+
+    disc_track.test()
+    audionotify.test()
+    emailsmtp.test(email_source,email_password,email_server)
+    localnotify.test()
+    scraper.test()
+    imdb.test()
 

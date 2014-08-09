@@ -2,34 +2,31 @@
 # -*- coding: utf-8 -*-
 
 
+import os
+import re
+import sys
 import json
+import subprocess
 
 
-class disc_track:
+import apppath
 
-    def __init__(self,dictLoad=None):
-        self.disc_name=''
+
+dirname = os.path.dirname(os.path.realpath( __file__ ))
+
+sys.path.append( os.path.join(dirname,"subtitle") )
+import caption
+
+
+class video_track(object):
+
+    def __init__(self):
         self.bytes=0
         self.megabytes=0.0
         self.gigabytes=0.0
         self.chapters=0.0
         self.durationS=0.0
-        self.segmentsMap=[]
-        self.titleID=0
-        self.trackNumber=0
-        self.outputFileName=''
-        
-        if ( dictLoad is not None ) and ( type(dictNone) == dict ):
-            self.disc_name = dictLoad['discname']
-            self.bytes = dictLoad['bytes']
-            self.megabytes = self.bytes / 1024 / 1024
-            self.gigabytes = self.bytes / 1024 / 1024 / 1024
-            self.chapters = dictLoad['chapters']
-            self.durationS = dictLoad['duration']
-            self.segmentsMap = dictLoad['segmentsmap']
-            self.titleID = dictLoad['titleid']
-            self.trackNumber = dictLoad['tracknumber']
-            self.outputFileName = dictLoad['filename']
+        self.subtitles=[]
 
     def serialize(self):
         retDict = {}
@@ -44,9 +41,103 @@ class disc_track:
         retDict['filename'] = self.outputFileName
         
         return json.dumps(retDict)
-        
+
     def __repr__(self):
-        retStr = '<disc_track '
+        retStr = '<track '
+        retStr += 'Megabytes: ' + str(self.megabytes) + ', '
+        retStr += 'DurationS: ' + str(self.durationS) + ', '
+        retStr += 'Subtitles: ' + str(self.subtitles) + '>'        
+        return retStr
+
+
+class localmkv_track(video_track):
+
+    def __init__(self,filepath):
+        super(localmkv_track, self).__init__()
+
+        self.filepath=filepath
+        self.bytes=float(os.path.getsize(filepath))
+        self.megabytes=self.bytes/1024.0
+        self.gigabytes=self.bytes/1024.0/1024.0
+        self.chapters=0.0
+        self.durationS=0.0
+        
+        self._loadSubtitles()
+        
+    def _loadMkvInfo(self):
+        cmdargs = [apppath.mkvinfo(),self.filepath]
+        cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd.wait()
+        response = cmd.communicate()
+        info = response[0].strip()
+        return info
+        
+    def vobsubDataForTrackNumber(self,trackNumber):
+        tmpDir = '/tmp'
+        vobsubFile = os.path.join(tmpDir,'tmpFile.sub')
+        cmdargs = [apppath.mkvextract(),'tracks',self.filepath,str(trackNumber)+':'+vobsubFile]
+        cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd.wait()
+        response = cmd.communicate()
+        
+        vobsubdata = None
+        idxdata = None
+        
+        if os.path.exists(vobsubFile):
+            fSub = open(vobsubFile,'r')
+            vobsubdata = fSub.read()
+            fSub.close()
+
+            fIdx = open(vobsubFile.replace('.sub','.idx'),'r')
+            idxdata = fIdx.read()
+            fIdx.close()
+
+        return [vobsubdata,idxdata]
+
+        
+    def _loadSubtitles(self):
+        mkvInfo = self._loadMkvInfo()
+        
+        segmentTracks = mkvInfo[mkvInfo.find('| + A track'):len(mkvInfo)]
+        
+        for segment in segmentTracks.split('| + A track'):
+            if '|  + Track type: subtitles' in segment:
+                lang = re.findall(r'Language\:\ ...?',segment)[0].replace('Language: ','').strip()
+                codec = re.findall(r'Codec ID\:\ \w+?\n',segment)[0].replace('Codec ID: ','').strip()
+                tracknum = int( re.findall(r'Track\ number\:\ \d+',segment)[0].replace('Track number: ','').strip() )
+                
+                if codec.lower() == 's_vobsub':
+                    """sub subtract 1 from tracknumber when called mkextract"""
+                    vobsubdata, idxdata = self.vobsubDataForTrackNumber(tracknum-1)
+                    
+                    subtitle = caption.VobSubCaption(vobsubdata,idxdata,lang)
+                    
+                    self.subtitles.append(subtitle)
+
+
+class disc_track(video_track):
+
+    def __init__(self,dictLoad=None):
+        self.disc_name=''
+        self.segmentsMap=[]
+        self.titleID=0
+        self.trackNumber=0
+        self.outputFileName=''
+        
+        if ( dictLoad is not None ) and ( type(dictLoad) == type({}) ):
+            self.disc_name = dictLoad['discname']
+            self.bytes = float(dictLoad['bytes'])
+            self.megabytes = self.bytes / 1024.0 / 1024.0
+            self.gigabytes = self.bytes / 1024.0 / 1024.0 / 1024.0
+            self.chapters = dictLoad['chapters']
+            self.durationS = dictLoad['duration']
+            self.segmentsMap = dictLoad['segmentsmap']
+            self.titleID = dictLoad['titleid']
+            self.trackNumber = dictLoad['tracknumber']
+            self.outputFileName = dictLoad['filename']
+
+    def __repr__(self):
+        retStr = '<track '
         retStr += 'DiscName: ' + self.disc_name + ', '
         retStr += 'DeviceName: ' + self.disc_device + ', '
         retStr += 'Gigabytes: ' + str(self.gigabytes) + ', '
@@ -58,30 +149,9 @@ class disc_track:
         retStr += 'Filename: ' + self.outputFileName + '>'
         
         return retStr
-    
-    def containsAllSegmentMapsFromDiscTrack(self,diskTrackCmp):
-        isMatch = True
-        
-        for i in range(len(diskTrackCmp.segmentsMap)):
-            segMapCmp = diskTrackCmp.segmentsMap[i]
-            
-            foundMatch = False
-            
-            for k in range(len(self.segmentsMap)):
-                segMapSelf = diskTrackCmp.segmentsMap[i]
-                
-                if segMapSelf == segMapCmp:
-                    foundMatch = True
-                    break
-            
-            if not foundMatch:
-                isMatch = False
-                break
 
-        return isMatch
-    
-    
-if __name__ == "__main__":
+
+def test():
     dictLoad = {}
 
     dictLoad['discname'] = 'disc'
@@ -91,6 +161,7 @@ if __name__ == "__main__":
     dictLoad['segmentsmap'] = [[0,1],[2,3]]
     dictLoad['titleid'] = 1
     dictLoad['filename'] = 'file1'
+    dictLoad['tracknumber'] = 'file1'
 
     track = disc_track(dictLoad)
 
@@ -101,3 +172,9 @@ if __name__ == "__main__":
     assert track.segmentsMap == [[0,1],[2,3]]
     assert track.titleID == 1
     assert track.outputFileName == 'file1'
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
+

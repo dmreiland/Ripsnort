@@ -196,11 +196,9 @@ class IMDb:
                 logging.error('Failed to fetch imdb object from id: ' + e.strerror)
             
         return result
-    
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
 
+def test():
     m = IMDb()
     #find movie
     
@@ -241,3 +239,9 @@ if __name__ == "__main__":
 
     assert m.findTVShow('The Simpsons')[0].durationS == 1320
     assert m.findTVShow('Simpsons')[0].durationS == 1320
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test()
+
