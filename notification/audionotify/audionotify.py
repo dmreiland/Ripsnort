@@ -18,7 +18,7 @@ class AudioNotify:
             
         if not os.path.isdir(self.temporaryDirectory):
             os.makedirs(self.temporaryDirectory)
-        
+
         self.pathSoundClipBackupStarted = None
 
         if params['audionotify_url_backupstarted']:

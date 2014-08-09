@@ -36,8 +36,8 @@ class IMDb:
             searchWord = searchWord[len('the'):len(searchWord)].strip()
     
         logging.info('Started search for ' + searchWord + ' year ' + str(year))
-    
-        resultsByTitle = self.api.find_by_title(searchWord)
+        
+        resultsByTitle = self._imdbFindByTitle(searchWord)
         
         filteredByTitle = []
                         
@@ -86,7 +86,7 @@ class IMDb:
             mediaobj.scrape_source = 'IMDb'
             
             #fetch detailed response and populate other fields
-            resDetail = self.api.find_movie_by_id(mediaobj.unique_id)
+            resDetail = self._imdbFindByID(mediaobj.unique_id)
             
             mediaobj.public_url = 'http://www.imdb.com/title/' + mediaobj.unique_id
             
@@ -153,6 +153,43 @@ class IMDb:
         logging.info('Returning candidates: ' + str(mediaList))
 
         return mediaList
+        
+    def _imdbFindByTitle(self,title,retryCount=5):
+        resultsByTitle = []
+        
+        from requests.exceptions import ConnectionError
+        
+        try:
+            resultsByTitle = self.api.find_by_title(title)
+        except ConnectionError as e:
+            if retryCount > 0:
+                logging.warn('Imdb connection error, retrying in 3 seconds')
+                import time
+                time.sleep(3.0)
+                resultsByTitle = self._imdbFindByTitle(title,retryCount-1)
+            else:
+                logging.error('Failed to fetch imdb results: ' + e.strerror)
+            
+        return resultsByTitle
+        
+    def _imdbFindByID(self,uniqueId,retryCount=5):
+        result = None
+        
+        from requests.exceptions import ConnectionError
+        
+        try:
+            result = self.api.find_movie_by_id(uniqueId)
+        except ConnectionError as e:
+            if retryCount > 0:
+                logging.warn('Imdb connection error, retrying in 3 seconds')
+                import time
+                time.sleep(3.0)
+                result = self._imdbFindByID(uniqueId,retryCount-1)
+            else:
+                logging.error('Failed to fetch imdb object from id: ' + e.strerror)
+            
+        return result
+    
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
