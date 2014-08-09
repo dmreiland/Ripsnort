@@ -92,7 +92,7 @@ class IMDb:
             
             if resDetail.runtime is not None:
                 mediaobj.durationS = int(resDetail.runtime) * 60
-            
+
             try:
                 for photo in resDetail.__dict__['data']['photos']:
                     mediaobj.photos_urls.append( photo['image']['url'] )
@@ -140,7 +140,14 @@ class IMDb:
             elif resDetail.type == 'feature' or resDetail.type == 'video':
                 mediaobj.content_type = 'movie'
             
-            if mediaobj.content_type is not None:
+            hasContentType = mediaobj.content_type is not None
+            hasDuration = mediaobj.durationS  > 0
+            isDurationSuitableForContent = True
+            
+            if mediaobj.content_type == 'movie' and mediaobj.durationS < (60*60):
+                isDurationSuitableForContent = False
+            
+            if hasContentType and hasDuration and isDurationSuitableForContent:
                 mediaList.append(mediaobj)
         
         if year == None:

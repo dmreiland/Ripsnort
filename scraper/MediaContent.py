@@ -24,7 +24,7 @@ class MediaContent:
         retStr = "<MediaContent "
         retStr += "content: " + self.content_type + ", "
         retStr += "year: " + str(self.production_year) + ", "
-        retStr += "title: " + self.title + ", "
-        retStr += " >"
+        retStr += "title: " + self.title
+        retStr += ">"
         
         return retStr
