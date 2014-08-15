@@ -67,7 +67,8 @@ class EmailSMTP:
             message += mediaObjects[0].plot_outline + "<br>\n"
             message += "Genres: " + " ".join( mediaObjects[0].genres ) + "<br>\n"
             
-            if mediaObjects[0].season_number is not None:
+            
+            if hasattr(mediaObjects[0],'season_number') and mediaObjects[0].season_number is not None:
                 message += "Season: " + mediaObjects[0].season_number + "<br>\n"
                 
             if mediaObjects[0].public_url is not None:

@@ -10,8 +10,12 @@ import logging
 
 from MediaContent import MediaContent
 
-
 dirname = os.path.dirname(os.path.realpath( __file__ ))
+
+
+sys.path.append(os.path.join(dirname,"opensubtitles"))
+
+import opensubtitles
 
 
 sys.path.append(os.path.join(dirname,"..","dependancies"))
@@ -30,8 +34,8 @@ class MediaScraper:
 
         if scraperType.lower() == 'imdb':
             sys.path.append(dirname + "/imdb")
-            import imdb
-            self.api = imdb.IMDb()
+            import scraper_imdb
+            self.api = scraper_imdb.IMDb()
             
         logging.info('Initialized with api: ' + str(self.api))
         
@@ -62,7 +66,7 @@ class MediaScraper:
         return results
 
     def findTVShow(self,tvshow,year=None):
-    
+
         tvshow = tvshow.strip()
         
         seasonNumber=MediaScraper._extractSeasonNumberFromName(tvshow)
@@ -97,12 +101,16 @@ class MediaScraper:
         logging.info('Returning TV shows: ' + str(results))
         
         return results
-            
+
+    def findTVEpisode(self,mediaObject,seasonNumber,episodeNumber):
+        return self.api.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
         
     def findContent(self,contentType,searchword):
         if contentType.lower().strip() == 'movie':
             return self.findMovie(searchword)
         elif contentType.lower().strip() == 'tvshow':
+            return self.findTVShow(searchword)
+        elif contentType.lower().strip() == 'tvepisode':
             return self.findTVShow(searchword)
         else:
             return None
@@ -257,6 +265,35 @@ class MediaScraper:
         return candidates
 
 
+class SubtitleScraper:
+    def __init__(self):
+        self.scraper = opensubtitles.OpenSubtitles()
+        logging.debug('Initialized SubtitleScraper scraper')
+    
+    def subtitlesForMediaContent(self,mediaContent):
+        subtitles = None
+        
+        if mediaContent.content_type == 'movie':
+            subtitles = self.subtitlesForMovie(mediaContent)
+
+        elif mediaContent.content_type == 'tvshow':
+            subtitles = self.subtitlesForTVShow(mediaContent)
+
+        elif mediaContent.content_type == 'tvepisode':
+            subtitles = self.subtitlesForTVEpisode(mediaContent)
+
+        return subtitles
+    
+    def subtitlesForMovie(self,movieObject):
+        return self.scraper.subtitlesForMovie(movieObject)
+
+    def subtitlesForTVShow(self,tvshowObject):
+        return self.scraper.subtitlesForTVShow(movieObject)
+
+    def subtitlesForTVEpisode(self,episodeObject):
+        return self.scraper.subtitlesForMovie(movieObject)
+
+
 def test():
     logging.basicConfig(level=logging.DEBUG)
 
@@ -279,8 +316,8 @@ def test():
 
     m = MediaScraper({'type':'imdb'})
 
-    assert m.findMovie('TGTBATU')[0].production_year == 1966
     assert m.findMovie('The Good, the Bad, and the Ugly')[0].production_year == 1966
+    assert m.findMovie('TGTBATU')[0].production_year == 1966
 
     assert m.findMovie('The Ant Bully')[0].production_year == 2006
     assert MediaScraper._extractYearFromName('Toy Story 3 2017') == None

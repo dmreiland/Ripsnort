@@ -24,10 +24,7 @@ class Caption:
         import difflib
         logging.debug('Comparing self.text: \'' + self.text + '\' to \'' + compareCaption + '\'')
         
-        textCheckSelf = re.sub(r'\W+','',self.text)
-        textCheckCompare = re.sub(r'\W+','',compareCaption)
-        
-        matchRatio = difflib.SequenceMatcher(None,textCheckSelf,compareCaption).ratio()
+        matchRatio = difflib.SequenceMatcher(None,self.text,compareCaption).ratio()
         logging.debug('Match ratio: ' + str(matchRatio))
         return matchRatio
         
@@ -48,11 +45,12 @@ class Caption:
 
 
 class SRTCaption(Caption):
-    def __init__(self,srtRaw):
+    def __init__(self,srtRaw,language):
         self.srt = srtRaw
         self.text = SRTCaption._extractTextFromSRT(srtRaw)
+        self.language = language
         
-        Caption.__init__(self,self.text)
+        Caption.__init__(self,self.text,language)
         
     def __repr__(self):
         return '<SRTCaption lan:' +self.language+ ' \'' + self.text + '\'>'
@@ -135,10 +133,10 @@ def test():
     textC = '0034567890'
     textD = '-234567890'
     
-    cA = Caption(textA)
-    cB = Caption(textB)
-    cC = Caption(textC)
-    cD = Caption(textD)
+    cA = Caption(textA,'en')
+    cB = Caption(textB,'en')
+    cC = Caption(textC,'en')
+    cD = Caption(textD,'en')
 
     assert cA.compareText(cA.text) == 1.0
     assert cA.compareText(cB.text) == 0.9

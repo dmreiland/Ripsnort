@@ -10,6 +10,7 @@ import logging
 
 
 import disc_drive
+import disc_name
 
 
 dirname = os.path.dirname(os.path.realpath( __file__ ))
@@ -218,75 +219,6 @@ def outputFileForTrackWithFormat(track,format):
     return newFilePath
 
 
-def formatDiscName(title):
-    tmpName = title
-
-    #remove 'editions' from title
-    tmpName = re.sub('(?i)extended[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)extended[_| ]?collectors[_| ]?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)extended[_| ]?special[_| ]?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)extended[_| ]?(?:3d)?cut','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)special[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)limited[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)ultimate[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)collectors[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)standard[_| ]?(?:3d)?edition','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)[_| ](?:3d)?retail','',tmpName,re.IGNORECASE)
-
-    #remove PAL/NTSC
-    tmpName = re.sub('(?i)[_| ]?pal','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)[_| ]?ntsc','',tmpName,re.IGNORECASE)
-
-    #remove DVD?Bluray
-    tmpName = re.sub('(?i)[_| ]?dvd','',tmpName,re.IGNORECASE)
-    tmpName = re.sub('(?i)[_| ]?blu[\-|_| ]?ray','',tmpName,re.IGNORECASE)
-
-    #check for tv series S7D1 S7_D1
-    seriesRegexShort = '(?i)s([\d{1,2}])_?d([\d{1,2}])'
-    seriesCheckShortRE = re.compile(seriesRegexShort)
-    
-    if len(seriesCheckShortRE.findall(tmpName)) > 0:
-        seriesSearch = seriesCheckShortRE.search(tmpName)
-        tmpName = re.sub(seriesRegexShort,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
-
-    #Season7_Disc1 Series7_Disc1
-    seriesRegexLong = '(?:season|series)_?([\d{1,2}])_?(?:disc|disk|d)_?([\d{1,2}])'
-    seriesCheckLongRE = re.compile(seriesRegexLong, re.IGNORECASE)
-    
-    if len(seriesCheckLongRE.findall(tmpName)) > 0:
-        seriesSearch = seriesCheckLongRE.search(tmpName)
-        tmpName = re.sub(seriesCheckLongRE,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName,re.IGNORECASE)
-    
-    #check for tv series with uncessary middle characters i.e. S7 F1 D1
-    seriesRegexMiddle = '(?i)(?:s|series|season)_?([\d{1,2}]).*(?:d|disc|disk)_?([\d{1,2}])'
-    seriesRegexMiddleRE = re.compile(seriesRegexMiddle)
-    
-    if len(seriesRegexMiddleRE.findall(tmpName)) > 0:
-        seriesSearch = seriesRegexMiddleRE.search(tmpName)
-        tmpName = re.sub(seriesRegexMiddle,' - Season ' + seriesSearch.groups()[0] + ' Disc ' + seriesSearch.groups()[1],tmpName)
-            
-    #look for numbers prepended to the end of the last word and add space
-    numberWhitespacing = r'\b(\w+)(\d+)\b$'
-    numberWhitespacingRE = re.compile(numberWhitespacing)
-        
-    if len(numberWhitespacingRE.findall(tmpName)) > 0:
-        whitespaceSearch = numberWhitespacingRE.search(tmpName)
-        tmpName = re.sub(numberWhitespacing,whitespaceSearch.groups()[0] + ' ' + whitespaceSearch.groups()[1],tmpName)
-            
-
-    # Clean up
-    tmpName = tmpName.replace("\"", "")
-    tmpName = tmpName.replace("_", " ")
-    tmpName = tmpName.replace("  ", " ")
-    
-    #capitalize first letter of each word
-    tmpName = tmpName.title()
-    tmpName = tmpName.strip()
-        
-    logging.info('Converted disc name: ' +title+ ' to ' + tmpName)
-
-    return tmpName
-
 
 def usage():
     return """
@@ -348,7 +280,7 @@ if __name__ == "__main__":
         
         ripper = ripper.Ripper(config['ripper'],discdevice)
         
-        formattedName = formatDiscName(drive.mountedDiscName())
+        formattedName = disc_name.DiscName(drive.mountedDiscName()).formattedName
 
         logging.info('Formatted disc name: ' + formattedName)
 
@@ -360,10 +292,16 @@ if __name__ == "__main__":
         
         mediaobjs = mediascraper.findContent(contentType,formattedName)
         
+        if mediaobjs == None:
+            mediaobjs = []
+        
         if len(mediaobjs) is not 1:
             alt_name = dvdfingerprint.disc_title(drive.mountedPath())
-            mediaobjs = mediascraper.findMovie(alt_name)
-    
+            mediaobjs = mediascraper.findContent(contentType,alt_name)
+            
+        if mediaobjs == None:
+            mediaobjs = []
+
         ripTracks = ripper.discTracks()
     
         logging.info( 'All video tracks:' + str(ripTracks) )

@@ -46,6 +46,9 @@ class MakeMKV:
     attributeids = server_settings['attibute_ids']
 
     def __init__(self,deviceID):
+        if MakeMKV._hasMakeMkvKeyExpired():
+            raise Exception('MakeMKV license key has expired. Manually run makemkv to update the key. (AppPath:' + apppath.makemkvcon() +')')
+    
         #TODO replace is a workaround til I figure out naming scheme for devices
         deviceID = deviceID.replace('/dev/disk','/dev/rdisk')
     
@@ -75,7 +78,7 @@ class MakeMKV:
         for track in tracks:
             try:
                 cmdargs = [apppath.makemkvcon(),'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave]
-                logging.info('Running command: ' + ' '.join(cmdargs))
+                logging.debug('Running command: ' + ' '.join(cmdargs))
                 exitCode = subprocess.call(cmdargs)
                 
                 if exitCode is not 0:
@@ -111,12 +114,32 @@ class MakeMKV:
             
     def __repr__(self):
         return "<MakeMKV device:" + self.deviceID +">"
+        
+    @staticmethod
+    def _hasMakeMkvKeyExpired():
+        hasExpired = False
+    
+        try:
+            cmdargs = [apppath.makemkvcon(),'--noscan','-r','info']
+            logging.debug('Running command: ' + ' '.join(cmdargs))
+            cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cmd.wait()
+            response = cmd.communicate()
+            
+            if 'enter a registration key to continue' in response[0].lower():
+                hasExpired = True
+
+        except subprocess.CalledProcessError as e:
+            logging.error( 'Failed to call makemkv: ' + str(e.output) )
+            sys.exit(1)
+        
+        return hasExpired
 
     @staticmethod
     def _discInfoRawFromDevice(deviceName):
         try:
             cmdargs = [apppath.makemkvcon(),'--noscan','-r','info','dev:%s' % deviceName]
-            logging.info('Running command: ' + ' '.join(cmdargs))
+            logging.debug('Running command: ' + ' '.join(cmdargs))
             cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             cmd.wait()
             response = cmd.communicate()
@@ -133,7 +156,7 @@ class MakeMKV:
     def _driveInfoRawFromDevice(deviceName):
         try:
             cmdargs = [apppath.makemkvcon(),'-r','info','disc:%d' % 9999]
-            logging.info('Running command: ' + ' '.join(cmdargs))
+            logging.debug('Running command: ' + ' '.join(cmdargs))
             cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             cmd.wait()
             response = cmd.communicate()

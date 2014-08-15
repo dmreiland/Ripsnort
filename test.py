@@ -11,6 +11,7 @@ dirname = os.path.dirname(os.path.realpath( __file__ ))
 
 
 import disc_track
+import disc_name
 
 
 sys.path.append( os.path.join(dirname,"notification","audionotify") )
@@ -31,18 +32,23 @@ import scraper
 sys.path.append( os.path.join(dirname,"scraper","imdb") )
 import imdb
 
+sys.path.append( os.path.join(dirname,"scraper","opensubtitles") )
+import opensubtitles
+
 
 if __name__ == "__main__":
-    email_source='ripsnort.auto@gmail.com'
-    email_password='Ryan1234'
+    email_source='email@gmail.com'
+    email_password='password'
     email_server='smtp.gmail.com'
 
     logging.basicConfig(level=logging.DEBUG)
 
     disc_track.test()
+    disc_name.test()
     audionotify.test()
     emailsmtp.test(email_source,email_password,email_server)
     localnotify.test()
     scraper.test()
     imdb.test()
+    opensubtitles.test()
 
