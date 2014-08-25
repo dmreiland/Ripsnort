@@ -68,7 +68,7 @@ Tools used
 
 Donations
 --------------
-If this project has helped you please consider becoming a VIP member to the not-for-profit OpenSubtitles.org website
+This project is dependant on the OpenSubtitles.org website. Please consider becoming a VIP member
 
 
 License
