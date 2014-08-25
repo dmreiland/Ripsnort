@@ -17,7 +17,7 @@ class EmailSMTP:
         self.destination_email = params['smtp_destination_email']
         self.source_email = params['smtp_source_email']
         
-        logging.info('EmailSMTP initialized with config: ' + str(params))
+        logging.debug('EmailSMTP initialized with config: ' + str(params))
         
     def __repr__(self):
         return "<EmailSMTP>"
@@ -69,7 +69,7 @@ class EmailSMTP:
             
             
             if hasattr(mediaObjects[0],'season_number') and mediaObjects[0].season_number is not None:
-                message += "Season: " + mediaObjects[0].season_number + "<br>\n"
+                message += "Season: " + str(mediaObjects[0].season_number) + "<br>\n"
                 
             if mediaObjects[0].public_url is not None:
                 message += "<a href=" + mediaObjects[0].public_url + ">Public link</a>"
@@ -94,6 +94,7 @@ class EmailSMTP:
         self._sendMessage(m.as_string())
 
     def _sendMessage(self,message):
+        logging.info('Sending email to \'' + str(self.destination_email) + '\'')
         logging.info('Sending email: ' + message)
         self.smtp = smtplib.SMTP_SSL(self.server,self.port)
         self.smtp.login(self.username,self.password)

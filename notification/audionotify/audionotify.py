@@ -62,7 +62,7 @@ class AudioNotify:
             if not os.path.isfile(self.pathSoundClipError):
                 AudioNotify._loadSoundUrlToFile(url,self.pathSoundClipError)
 
-        logging.info('AudioNotify initialized with config: ' + str(params))
+        logging.debug('AudioNotify initialized with config: ' + str(params))
         
     def __repr__(self):
         return "<AudioNotify>"

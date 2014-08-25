@@ -72,7 +72,7 @@ class DiscName:
     def titleSeasonAndDiscFromDiscName(disc_name):
         tmpName = disc_name
     
-        logging.info('Removed unnecessary chars to \'' + tmpName + '\'')
+        logging.debug('Removed unnecessary chars to \'' + tmpName + '\'')
     
         #first matching group - season, 2nd - disc number
         regexSeasonDisk = [r'(?i)s([\d{1,2}])_?d([\d{1,2}])',
@@ -108,7 +108,7 @@ class DiscName:
         if len(tmpName) <= 3:
             tmpName = tmpName.upper()
 
-        logging.info('Converted disc name: ' +disc_name+ ' to ' + tmpName + ', season:' + str(season) + ', disc:' + str(disc))
+        logging.debug('Converted disc name: \'' +disc_name+ '\' to title:' + tmpName + ', season:' + str(season) + ', disc:' + str(disc))
 
         return [tmpName,season,disc]
 

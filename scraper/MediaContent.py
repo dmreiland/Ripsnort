@@ -19,13 +19,36 @@ class MediaContent(object):
         self.plot_outline = ''
         self.genres = []
         self.public_url = ''
+        self.popularity = 0
+
+    def longestDuration(self):
+        return max(self.durationS)
+
+    def shortestDuration(self):
+        return min(self.durationS)
+        
+    def hasDurationBetweenMaxMin(self,maxDurationS,minDurationS):
+        isMatch = False
+        
+        durations = self.durationS
+        
+        if durations is None:
+            durations = []
+        
+        for durationSeconds in durations:
+            if durationSeconds >= minDurationS and durationSeconds <= maxDurationS:
+                isMatch = True
+                break
+
+        return isMatch
 
     def __repr__(self):
         retStr = "<MediaContent "
         retStr += "content: " + self.content_type + ", "
         retStr += "year: " + str(self.production_year) + ", "
-        retStr += "title: " + self.title.encode('ascii','replace')
+        retStr += "title: " + str(self.title)
         retStr += ">"
+        return retStr
 
     def __eq__(self,cmp):
         titleMatch = self.title == cmp.title
@@ -33,10 +56,10 @@ class MediaContent(object):
         return titleMatch and yearMatch
         
     def __ne__(self,cmp):
-        return not self.__eq__(cmp)        
-    
-        
-        return retStr
+        return not self.__eq__(cmp)
+
+    def __hash__(self):
+        return hash((str(self.scraper_data),self.unique_id))
 
 
 class MovieMedia(MediaContent):
@@ -62,8 +85,8 @@ class TVShowMedia(MediaContent):
 
     def __repr__(self):
         retStr = "<TVShowMedia "
-        retStr += "number_episodes: " + str(self.number_of_episodes) + ", "
-        retStr += "number_seasons" + str(self.number_of_seasons) + ", "
+        retStr += "number of episodes: (" + str(self.number_of_episodes) + "), "
+        retStr += "number of seasons: (" + str(self.number_of_seasons) + "), "
         retStr += "title: " + self.title.encode('ascii','replace')
         retStr += ">"
         
@@ -80,8 +103,9 @@ class TVEpisodeMedia(MediaContent):
 
     def __repr__(self):
         retStr = "<TVEpisodeMedia "
-        retStr += "episode: " + self.content_type + "(" + str(self.episode_number) + "),"
-        retStr += "season: " + str(self.season_number) + "),"
+        retStr += "episode: (" + str(self.episode_number) + "),"
+        retStr += "epi.title: (" + str(self.episode_title) + "),"
+        retStr += "season: (" + str(self.season_number) + "),"
         retStr += "year: " + str(self.production_year) + ", "
         retStr += "title: " + self.title.encode('ascii','replace')
         retStr += ">"

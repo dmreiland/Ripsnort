@@ -14,35 +14,18 @@ import md5
 
 dirname = os.path.dirname(__file__)
 
-sys.path.append(os.path.join(dirname, "../.."))
-sys.path.append(os.path.join(dirname, "../../dependancies"))
-
-from disc_track import disc_track
+sys.path.append(os.path.join(dirname,"..",".."))
+from disc_track import DiscTrack
 import apppath
 
-
-def loadConfigFile(configFile):
-    import ConfigParser
-    
-    logging.info('Loading file: ' + str(configFile))
-
-    config = ConfigParser.RawConfigParser()
-    config.read(configFile)
-    
-    d = dict(config._sections)
-    for k in d:
-        d[k] = dict(config._defaults, **d[k])
-        d[k].pop('__name__', None)
-    
-    logging.info('Loaded dictionary: ' + str(d))
-
-    return d
+sys.path.append(os.path.join(dirname,"..","..","utils"))
+import inireader
 
 
 class MakeMKV:
     newlinechar = '\n'
     colpattern = re.compile(r'''((?:[^,"']|"[^"]*"|'[^']*')+)''')
-    server_settings = loadConfigFile(os.path.join(dirname,'makemkv.ini'))
+    server_settings = inireader.loadFile(os.path.join(dirname,'makemkv.ini'),convertNativeTypes=False)
     attributeids = server_settings['attibute_ids']
 
     def __init__(self,deviceID):
@@ -61,7 +44,7 @@ class MakeMKV:
 
         self.driveNumber = MakeMKV._driveNumber(driveInfo,deviceID)
         
-        logging.info('MakeMKV initialized with deviceID' + str(deviceID))
+        logging.debug('MakeMKV initialized with deviceID' + str(deviceID))
         
     def __repr__(self):
         return "<MakeMKV>"
@@ -71,12 +54,18 @@ class MakeMKV:
 
     def ripDiscTracks(self,tracks,pathSave):
         didRip = True
-    
+        
         if not os.path.isdir(pathSave):
             os.makedirs(pathSave)
             
         for track in tracks:
             try:
+                outputFile = os.path.join(pathSave,track.outputFileName)
+
+                if os.path.exists(outputFile):
+                    os.remove(outputFile)
+
+                logging.info('Started ripping track: ' + str(track))
                 cmdargs = [apppath.makemkvcon(),'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave]
                 logging.debug('Running command: ' + ' '.join(cmdargs))
                 exitCode = subprocess.call(cmdargs)
@@ -281,7 +270,7 @@ class MakeMKV:
                 else:
                     segmentsList.append( int(mapStr) )
             
-            track = disc_track()
+            track = DiscTrack()
             
             track.disc_name = volumeName
             track.disc_device=''

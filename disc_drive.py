@@ -34,7 +34,7 @@ class DiscDrive:
         elif platformName == 'linux':
             self.osType = OS_LINUX
         
-        logging.info('Initialised DiscDrive for device: ' + self.deviceID + ' on platform: ' + self.osType)
+        logging.debug('Initialised DiscDrive for device: ' + self.deviceID + ' on platform: ' + self.osType)
 
     def isOpen(self):
         return not self.isClosed()

@@ -31,7 +31,7 @@ class Notification:
             import audionotify
             self.apis.append( audionotify.AudioNotify(params) )
             
-        logging.info("Initialized with apis: " + str(self.apis))
+        logging.debug("Initialized with apis: " + str(self.apis))
 
     def startedBackingUpDisc(self,discName):
         for api in self.apis:

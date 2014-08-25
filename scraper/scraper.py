@@ -26,21 +26,27 @@ REGEX_SEASON_MATCH = r'(?i)(?:season|series|s)[_| ]?(\d{1,2})'
 
 
 class MediaScraper:
+    _instance = None
 
-    def __init__(self,params):
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(MediaScraper, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    def __init__(self):
         dirname = os.path.dirname(os.path.realpath( __file__ ))
         
-        scraperType = params['type']
+        scraperType = 'imdb'
 
         if scraperType.lower() == 'imdb':
             sys.path.append(dirname + "/imdb")
             import scraper_imdb
             self.api = scraper_imdb.IMDb()
             
-        logging.info('Initialized with api: ' + str(self.api))
+        logging.debug('Initialized with api: ' + str(self.api))
         
     def __repr__(self):
-        return "<Scraper>"
+        return "<MediaScraper type:" +str(self.api)+ ">"
 
     def findMovie(self,movie,year=None):
         movie = movie.strip()
@@ -56,12 +62,12 @@ class MediaScraper:
 
             acronyms = MediaScraper._acronymsFromNameWithType(movie,'movie')
 
-            logging.info('Found acronyms: ' + str(acronyms))
+            logging.debug('Found acronyms: ' + str(acronyms))
 
             if len(acronyms) == 1:
                 results = self.api.findMovie(acronyms[0],year)
 
-        logging.info('Returning Movies: ' + str(results))
+        logging.debug('Returning Movies: ' + str(results))
         
         return results
 
@@ -69,7 +75,7 @@ class MediaScraper:
 
         tvshow = tvshow.strip()
         
-        seasonNumber=MediaScraper._extractSeasonNumberFromName(tvshow)
+        seasonNumber = MediaScraper._extractSeasonNumberFromName(tvshow)
         
         tvshow = MediaScraper._removeSeasonFromName(tvshow)
         
@@ -93,28 +99,50 @@ class MediaScraper:
 
             acronyms = MediaScraper._acronymsFromNameWithType(tvshow,'tvshow')
 
-            logging.info('Found acronyms: ' + str(acronyms))
+            logging.debug('Found acronyms: ' + str(acronyms))
 
             if len(acronyms) == 1:
                 results = self.api.findTVShow(acronyms[0],seasonNumber,year)
         
-        logging.info('Returning TV shows: ' + str(results))
+        logging.debug('Returning TV shows: ' + str(results))
         
         return results
 
     def findTVEpisode(self,mediaObject,seasonNumber,episodeNumber):
         return self.api.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
+
+    def findTVEpisodesForSeason(self,mediaObject,seasonNumber):
+        return self.api.findTVEpisodesForSeason(mediaObject,seasonNumber)
+
+    def findContent(self,searchword,contentType,targetDurationS=None,durationTolerance=0.3):
+        contentReturn = []
         
-    def findContent(self,contentType,searchword):
-        if contentType.lower().strip() == 'movie':
-            return self.findMovie(searchword)
-        elif contentType.lower().strip() == 'tvshow':
-            return self.findTVShow(searchword)
-        elif contentType.lower().strip() == 'tvepisode':
-            return self.findTVShow(searchword)
+        contentType = contentType.replace(' ','').lower().strip()
+        
+        if contentType == 'movie':
+            contentReturn = self.findMovie(searchword)
+        
+        elif contentType == 'tvshow':
+            contentReturn = self.findTVShow(searchword)
+
+        elif contentType == 'tvepisode':
+            contentReturn = self.findTVEpisode(searchword)
+
         else:
-            return None
-    
+            logging.error('Unknown content type:' + contentType)
+            contentReturn = None
+        
+        print 'Content before filter: ' + str(contentReturn)
+        
+        '''If we have to filter on the duration and the results are present use the MediaContent method hasDurationBetweenMaxMin to filter'''
+        if targetDurationS is not None and contentReturn is not None:
+            maxTargetDurationS = targetDurationS + ( targetDurationS * durationTolerance )
+            minTargetDurationS = targetDurationS - ( targetDurationS * durationTolerance )
+            contentReturn = filter(lambda x: x.hasDurationBetweenMaxMin(maxTargetDurationS,minTargetDurationS), contentReturn)
+        
+        print 'Content after filter: ' + str(contentReturn)
+        
+        return contentReturn
 
     @staticmethod
     def _extractYearFromName(name):
@@ -266,36 +294,68 @@ class MediaScraper:
 
 
 class SubtitleScraper:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(SubtitleScraper, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+    
     def __init__(self):
         self.scraper = opensubtitles.OpenSubtitles()
         logging.debug('Initialized SubtitleScraper scraper')
-    
-    def subtitlesForMediaContent(self,mediaContent):
-        subtitles = None
         
-        if mediaContent.content_type == 'movie':
-            subtitles = self.subtitlesForMovie(mediaContent)
-
-        elif mediaContent.content_type == 'tvshow':
-            subtitles = self.subtitlesForTVShow(mediaContent)
-
-        elif mediaContent.content_type == 'tvepisode':
-            subtitles = self.subtitlesForTVEpisode(mediaContent)
-
-        return subtitles
+    def __repr__(self):
+        return "<SubtitleScraper type:" +str(self.api)+ ">"
     
     def subtitlesForMovie(self,movieObject):
         return self.scraper.subtitlesForMovie(movieObject)
 
     def subtitlesForTVShow(self,tvshowObject):
-        return self.scraper.subtitlesForTVShow(movieObject)
+        '''Currently no support'''
+        return None
+        #return self.scraper.subtitlesForTVShow(movieObject)
 
     def subtitlesForTVEpisode(self,episodeObject):
         return self.scraper.subtitlesForMovie(movieObject)
+        
+    def subtitlesForMediaContent(self,mediaObject):
+        subs = []
 
+        if mediaObject.content_type == 'movie':
+            api = opensubtitles.OpenSubtitles()
+            subs = api.subtitlesForMovie(self,mediaObject)
+
+        elif mediaObject.content_type == 'tvshow':
+            logging.error('Unable to download subtitles for tvshow. Must be a single entity')
+
+        elif mediaObject.content_type == 'tvepisode':
+            api = opensubtitles.OpenSubtitles()
+            subs = api.subtitlesForTVEpisode(mediaObject)
+
+        else:
+            logging.error('Unable content type: ' + str(mediaObject.content_type))
+            
+        return subs
 
 def test():
     logging.basicConfig(level=logging.DEBUG)
+    
+    s = SubtitleScraper()
+
+    m = MediaScraper()
+    
+    tvShow = m.findTVShow('The Brittas Empire')[0]
+
+    assert tvShow.number_of_seasons == 7
+    assert tvShow.number_of_episodes == 51
+    
+    tvEpisodes = m.findTVEpisodesForSeason(tvShow,1)
+    
+    assert len(tvEpisodes) == 6
+    assert tvEpisodes[0].episode_title == 'Laying the Foundations'
+    assert tvEpisodes[0].episode_number == 1
+    assert tvEpisodes[0].season_number == 1
 
     #Acronym checker
     assert len(MediaScraper._acronymsFromNameWithType('Snow White And The Huntsman','movie')) == 0
@@ -314,7 +374,7 @@ def test():
     assert MediaScraper._acronymsFromNameWithType('HJNTIY','movie')[0] == 'He\'s Just Not That Into You'
     assert MediaScraper._acronymsFromNameWithType('THGTTG','movie')[0] == 'The Hitchhiker\'s Guide to the Galaxy'
 
-    m = MediaScraper({'type':'imdb'})
+
 
     assert m.findMovie('The Good, the Bad, and the Ugly')[0].production_year == 1966
     assert m.findMovie('TGTBATU')[0].production_year == 1966

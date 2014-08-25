@@ -19,7 +19,7 @@ class Ripper:
             import makemkv
             self.api = makemkv.MakeMKV(deviceID)
             
-        logging.info('Initialized with api: ' + str(self.api))
+        logging.debug('Initialized with api: ' + str(self.api))
         
     def __repr__(self):
         return "<Ripper>"

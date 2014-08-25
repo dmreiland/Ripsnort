@@ -6,8 +6,8 @@ import os
 import re
 import sys
 import json
+import logging
 import subprocess
-
 
 import apppath
 
@@ -18,7 +18,7 @@ sys.path.append( os.path.join(dirname,"subtitle") )
 import caption
 
 
-class video_track(object):
+class VideoTrack(object):
 
     def __init__(self):
         self.bytes=0
@@ -37,10 +37,11 @@ class video_track(object):
         retDict['duration'] = self.durationS
         retDict['segmentsmap'] = self.segmentsMap
         retDict['titleid'] = self.titleID
-        retDict['tracknumber'] = self.trackNumber
-        retDict['filename'] = self.outputFileName
         
         return json.dumps(retDict)
+
+    def __hash__(self):
+        return hash((self.bytes, self.durationS, str(self.subtitles)))
 
     def __repr__(self):
         retStr = '<track '
@@ -50,52 +51,81 @@ class video_track(object):
         return retStr
 
 
-class localmkv_track(video_track):
+class LocalTrackMkv(VideoTrack):
 
     def __init__(self,filepath):
-        super(localmkv_track, self).__init__()
+        if os.path.exists(filepath) == False:
+            raise Exception('Cannot create LocalTrackMkv object when file does not exist: ' + str(filepath))
+
+        super(LocalTrackMkv, self).__init__()
 
         self.filepath=filepath
         self.bytes=float(os.path.getsize(filepath))
         self.megabytes=self.bytes/1024.0
         self.gigabytes=self.bytes/1024.0/1024.0
-        self.chapters=0.0
-        self.durationS=0.0
+        self.chapters=0.0 #TODO
+        
+        mkvInfo = self._loadMkvInfo()
+        
+        if mkvInfo is not None:
+            self.durationS= int( re.findall(r'\+\ Duration\:\ (\d+)',mkvInfo)[0] )
         
         self._loadSubtitles()
         
     def _loadMkvInfo(self):
         cmdargs = [apppath.mkvinfo(),self.filepath]
+        logging.debug('Running command ' + ' '.join(cmdargs))
         cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         cmd.wait()
         response = cmd.communicate()
         info = response[0].strip()
+        
+        if '(MKVInfo) Error: Couldn\'t open input file' in info:
+            logging.error('Failed to load mkvInfo: ' + info)
+            info = None
+        else:
+            logging.debug('Loaded track info: ' + str(info))
+
         return info
         
     def vobsubDataForTrackNumber(self,trackNumber):
         tmpDir = '/tmp'
         vobsubFile = os.path.join(tmpDir,'tmpFile.sub')
+        
+        if os.path.exists(vobsubFile):
+            os.remove(vobsubFile)
+        
+        idxFile = os.path.join(tmpDir,'tmpFile.idx')
+        
+        if os.path.exists(idxFile):
+            os.remove(idxFile)
+        
         cmdargs = [apppath.mkvextract(),'tracks',self.filepath,str(trackNumber)+':'+vobsubFile]
+        logging.debug('Running command ' + ' '.join(cmdargs))
         cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        cmd.wait()
+#         cmd.wait()
         response = cmd.communicate()
         
         vobsubdata = None
         idxdata = None
         
-        if os.path.exists(vobsubFile):
+        if os.path.exists(vobsubFile) and os.path.exists(idxFile):
+            logging.debug('Found vob sub file ' + vobsubFile)
             fSub = open(vobsubFile,'r')
             vobsubdata = fSub.read()
             fSub.close()
 
-            fIdx = open(vobsubFile.replace('.sub','.idx'),'r')
+            fIdx = open(idxFile,'r')
             idxdata = fIdx.read()
             fIdx.close()
+        else:
+            logging.error('Failed to file vobsub file')
 
         return [vobsubdata,idxdata]
 
         
-    def _loadSubtitles(self):
+    def _loadSubtitles(self,languages=['eng']):
+        logging.debug('Loading subtitles for ' + self.filepath)
         mkvInfo = self._loadMkvInfo()
         
         segmentTracks = mkvInfo[mkvInfo.find('| + A track'):len(mkvInfo)]
@@ -106,18 +136,45 @@ class localmkv_track(video_track):
                 codec = re.findall(r'Codec ID\:\ \w+?\n',segment)[0].replace('Codec ID: ','').strip()
                 tracknum = int( re.findall(r'Track\ number\:\ \d+',segment)[0].replace('Track number: ','').strip() )
                 
+                logging.debug('Found subtitle codec: ' + codec + ' language: ' + lang + ' track: ' + str(tracknum))
+                
+                if lang not in languages:
+                    continue
+
                 if codec.lower() == 's_vobsub':
-                    """sub subtract 1 from tracknumber when called mkextract"""
+                    logging.debug('Loading vobsub data for tracknum ' + str(tracknum) + ' language ' + str(lang))
+                
+                    '''sub subtract 1 from tracknumber when called mkextract'''
                     vobsubdata, idxdata = self.vobsubDataForTrackNumber(tracknum-1)
                     
                     subtitle = caption.VobSubCaption(vobsubdata,idxdata,lang)
-                    
+                    subtitle.data_source = 'makemkv'
+
+
                     self.subtitles.append(subtitle)
 
+                elif codec.lower() == 's_text/utf8':
+                    logging.debug('Loading srt data for tracknum ' + str(tracknum) + ' language ' + str(lang))
+                
+                    '''sub subtract 1 from tracknumber when called mkextract'''
+#                     vobsubdata, idxdata = self.vobsubDataForTrackNumber(tracknum-1)
+#                     
+#                     subtitle = caption.VobSubCaption(vobsubdata,idxdata,lang)
+#                     
+#                     self.subtitles.append(subtitle)
+#                    subtitle.data_source = 'makemkv'
 
-class disc_track(video_track):
+                else:
+                    logging.warn('Unrecognised subtitles codec: ' + codec)
+
+
+
+class DiscTrack(VideoTrack):
 
     def __init__(self,dictLoad=None):
+
+        super(DiscTrack, self).__init__()
+
         self.disc_name=''
         self.segmentsMap=[]
         self.titleID=0
@@ -151,6 +208,30 @@ class disc_track(video_track):
         return retStr
 
 
+def tracksOverDuration(durationMin,discTracks):
+    tracksRet = []
+    
+    for track in discTracks:
+        if track.durationS >= durationMin:
+            tracksRet.append(track)
+    
+    return tracksRet
+
+
+def tracksUnderDuration(durationMax,discTracks):
+    tracksRet = []
+    
+    for track in discTracks:
+        if track.durationS <= durationMax:
+            tracksRet.append(track)
+    
+    return tracksRet
+
+
+def tracksBetweenDurationMinMax(tracks,durationMin,durationMax):
+    return tracksUnderDuration(durationMax, tracksOverDuration(durationMin,tracks))
+
+
 def test():
     dictLoad = {}
 
@@ -163,7 +244,7 @@ def test():
     dictLoad['filename'] = 'file1'
     dictLoad['tracknumber'] = 'file1'
 
-    track = disc_track(dictLoad)
+    track = DiscTrack(dictLoad)
 
     assert track.disc_name == 'disc'
     assert track.bytes == 999

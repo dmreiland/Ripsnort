@@ -28,6 +28,10 @@ class IMDb:
         for result in results:
             resultsStr += '    - ' + str(result) + '\n'
 
+        '''Remove duplicates'''
+        if results is not None:
+            results = list(set(results))
+
         logging.debug('Returning movie results(' +str(len(results))+ '): ' + resultsStr)
 
         return results
@@ -40,10 +44,40 @@ class IMDb:
         for result in results:
             resultsStr += '    - ' + str(result) + '\n'
 
+        '''Remove duplicates'''
+        if results is not None:
+            results = list(set(results))
+
         logging.debug('Returning tvshow results(' +str(len(results))+ '): ' + resultsStr)
 
         return results
+    
+    def findTVEpisodesForSeason(self,mediaObject,seasonNumber):
+        episodes = []
+        
+        pilotEpisode = self.findTVEpisode(mediaObject,seasonNumber,0)
+        
+        if pilotEpisode is not None:
+            episodes.append(pilotEpisode)
 
+        didFind = True
+        episodeNumber = 1
+        
+        while didFind:
+            newEpisode = self.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
+            
+            if newEpisode is not None:
+                episodes.append(newEpisode)
+                episodeNumber += 1
+            else:
+                logging.debug('Searching tv show: ' + str(mediaObject) + ' finished on season: ' + str(seasonNumber) + ' at episode: ' + str(episodeNumber))
+                break
+
+        '''Remove duplicates'''
+        if episodes is not None:
+            episodes = list(set(episodes))
+
+        return episodes
 
     def findTVEpisode(self,mediaObject,seasonNumber,episodeNumber):
         episodeObject = None
@@ -51,6 +85,13 @@ class IMDb:
         logging.debug('Fetching episodes for tv show: '  + mediaObject.title)
 
         self.api.update(mediaObject.scraper_data,'episodes')
+        
+        if not mediaObject.scraper_data.has_key('episodes'):
+            self.api.update(mediaObject.scraper_data,'episodes')
+
+        if not mediaObject.scraper_data.has_key('episodes'):
+            logging.error('Repeatedly failed to get episode:' + str(mediaObject) + ' season:' + str(seasonNumber) + ' episode:' + str(episodeNumber))
+            return None
 
         seasons = mediaObject.scraper_data['episodes']
 
@@ -79,14 +120,14 @@ class IMDb:
     def _searchForTitleWithContent(self,searchWord,contentType,year=None):
         #if searchWord starts with 'the' remove it before searching
     
-        logging.info('Started search for ' + searchWord + ' year ' + str(year))
+        logging.debug('Started search for ' + searchWord + ' year ' + str(year))
         
         filteredResults = self._imdbFindByTitle(searchWord)
 
         #filter by year if applicable
         if year is not None:
             filteredResults = filter(lambda x: x.production_year == year, filteredResults)
-            logging.info('Candidates filtered to year: ' + str(year) + ' candidates:' + str(filteredResults))
+            logging.debug('Candidates filtered to year: ' + str(year) + ' candidates:' + str(filteredResults))
 
         filteredResults = filter(lambda x: x.content_type == contentType, filteredResults)
 
@@ -113,7 +154,7 @@ class IMDb:
         #remove duplicates
         mediaList = list(set(mediaList))
 
-        logging.info('Returning candidates: ' + str(mediaList))
+        logging.debug('Returning candidates: ' + str(mediaList))
 
         return mediaList
         
@@ -162,7 +203,7 @@ class IMDb:
             result = self.api.get_movie(uniqueId)
             self.api.update(result)
             logging.debug('Result for id:' + str(uniqueId) + ', ' + str(result))
-        except ConnectionError as e:
+        except Exception as e:
             if retryCount > 0:
                 logging.warn('Imdb connection error, retrying in 3 seconds')
                 import time
@@ -171,17 +212,24 @@ class IMDb:
             else:
                 logging.error('Failed to fetch imdb object from id: ' + e.strerror)
         
-        if result is not None:
-            if result['kind'] == 'movie' or result['kind'] == 'video movie' or result['kind'] == 'tv movie':
+        if result is not None and result.has_key('kind'):
+            kind = result['kind'].encode('ascii','replace').replace(' ','').strip()
+
+            if kind == 'movie' or kind == 'videomovie' or kind == 'tvmovie':
                 mediaobj = MovieMedia()
 
-            elif result['kind'] == 'tv series':
+            elif kind == 'tvseries':
+                self.api.update(result,'episodes')
                 mediaobj = TVShowMedia()
 
-            elif result['kind'] == 'episode':
+            elif kind == 'episode':
                 mediaobj = TVEpisodeMedia()
+
             else:
+                logging.debug('Error searching for IMDBId: ' + str(uniqueId) + ' returned bad result: ' + str(result))
                 return None
+                
+            logging.debug('Loaded IMDBId: ' + str(uniqueId) + ' Kind: ' + kind)# + ' Data: ' + str(result.__dict__))
 
             mediaobj.scraper_source = 'IMDb'
             mediaobj.scraper_data = result
@@ -192,7 +240,7 @@ class IMDb:
                 pass
             
             try:
-                mediaobj.title = result['title'].strip()
+                mediaobj.title = result['title'].strip().encode('ascii','replace')
             except:
                 pass
 
@@ -204,8 +252,6 @@ class IMDb:
             
             mediaobj.unique_id = result.movieID
             mediaobj.public_url = 'http://www.imdb.com/title/tt' + str(mediaobj.unique_id)
-            
-            print result.keys()
             
             try:
                 for runtime in result['runtimes']:
@@ -234,8 +280,50 @@ class IMDb:
                 mediaobj.genres = result['genres']
             except:
                 pass
-        
-        logging.debug('Returning result for id:' + str(uniqueId) + ', ' + str(result))
+            
+            try:
+                mediaobj.popularity = result['votes']
+            except:
+                pass
+                
+            try:
+                seasons = mediaobj.scraper_data['episodes']
+                mediaobj.number_of_seasons = len( seasons.keys() )
+                logging.debug('Season count ' + str(mediaobj.number_seasons) + ' data:' + str(seasons))
+            except:
+                pass
+                
+            try:
+                number_of_episodes = 0
+                
+                seasons = mediaobj.scraper_data['episodes']
+
+                for season in seasons:
+                    episodesDict = seasons[season]
+                    logging.debug('Episode keys: ' + str(episodesDict.keys()))
+                    number_of_episodes += len(episodesDict.keys())
+
+                mediaobj.number_of_episodes = number_of_episodes
+            except:
+                pass
+            
+            try:
+                mediaobj.season_number = result['season']
+            except:
+                pass
+
+            try:
+                mediaobj.episode_number = result['episode']
+            except:
+                pass
+
+            try:
+                mediaobj.title = result['episode of']['title'].encode('ascii','replace')
+                mediaobj.episode_title = result['title'].encode('ascii','replace')
+            except:
+                pass
+
+        logging.debug('Returning result for id:' + str(uniqueId) + ', ' + str(mediaobj))
         return mediaobj
 
 
@@ -259,13 +347,30 @@ def test():
     assert m.findMovie('The Ant Bully')[0].production_year == 2006
     assert m.findMovie('Ant Bully')[0].production_year == 2006
 
-
     assert len(m.findMovie('Cloudy with a chance of meatballs 2')) == 1
     assert len(m.findMovie('Die Hard',1988)) == 1
     assert len(m.findMovie('The X-Files I Want to believe')) == 1
 
     assert len(m.findTVShow('The Brittas Empire')) == 1
     assert len(m.findTVShow('Brittas Empire')) == 1
+
+    tvShow = m.findTVShow('Brittas Empire')[0]
+    logging.debug('Testing tv show: ' + str(tvShow))
+
+    assert tvShow.number_of_seasons == 7
+    assert tvShow.number_of_episodes == 51
+    
+    tvEpisodes = m.findTVEpisodesForSeason(tvShow,1)
+    
+    assert len(tvEpisodes) == 6
+    print('Testing episode: ' + str(tvEpisodes[0]))
+    
+    print('Testing episode: ' + str(tvEpisodes[0].title))
+    assert tvEpisodes[0].unique_id == '0532366'
+    assert tvEpisodes[0].title == 'The Brittas Empire'
+    assert tvEpisodes[0].episode_title == 'Laying the Foundations'
+    assert tvEpisodes[0].episode_number == 1
+    assert tvEpisodes[0].season_number == 1
 
     #test the episode length
     xFilesTVShow = m.findTVShow('The X-Files')[0]
@@ -297,6 +402,6 @@ def test():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     test()
 
