@@ -186,13 +186,9 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
     mediaObjMatchRatio = 0.0
 
     localVideoTrack = disc_track.LocalTrackMkv(trackPath)
-    logging.debug('Opened video file: ' + trackPath + ' track:' + str(localVideoTrack))
-
-    print 'Target duration: ' + str(localVideoTrack.durationS)
+    logging.debug('Opened video file: ' + trackPath + ' track:' + str(localVideoTrack) + ' targetDuration:' + str(localVideoTrack.durationS))
 
     candidateList = scraper.MediaScraper().findContent(discname.title,contentType,targetDurationS=localVideoTrack.durationS,durationTolerance=0.14)
-
-    print('A.Candidate media objects: ' + str(candidateList))
 
     '''sort by least popular and then reverse'''
     candidateList.sort(key=lambda x: float(x.popularity))
@@ -226,14 +222,12 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
             episodeLength = mediaObjsCompare[0].shortestDuration()
             episodeIndexOffset = durationOffset / episodeLength
             mediaObjsCompare = mediaObjsCompare[episodeIndexOffset:len(mediaObjsCompare)] + mediaObjsCompare[0:episodeIndexOffset]
+            logging.debug('Set start offset to search: ' + str(episodeIndexOffset))
                 
         for mediaObj in mediaObjsCompare:
-
-            print('Media obj: ' + str(mediaObj))
-
             subsRemote = scraper.SubtitleScraper().subtitlesForMediaContent(mediaObj)
 
-            print('Subs remote: ' + str(len(subsRemote)))
+            logging.debug('Testing for media object: ' + str(mediaObj) + ', found ' + str(len(subsRemote)) + ' subtitles')
             
             for subLocal in localVideoTrack.subtitles:
                 closestMatchCaption = subLocal.findClosestMatchFromCaptions(subsRemote)
@@ -247,7 +241,7 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
 
                 newRatio = subLocal.matchRatioWithCaption(closestMatchCaption)
 
-                logging.info('Got ratio: ' + str(newRatio) + ' for match: ' + str(mediaObj))
+                logging.info('Got match ratio: ' + str(newRatio) + ' for media: ' + str(mediaObj))
                 
                 if newRatio > mediaObjMatchRatio and newRatio > 0.50:
                     mediaObjMatchRatio = newRatio
@@ -259,8 +253,8 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
         import time
         time.sleep(1)
 
-    logging.debug('Best match ratio:' + str(mediaObjMatchRatio) + ' for mediafile: ' +str(mediaObjReturn))
-    sys.exit(1)
+    logging.info('Best match ratio:' + str(mediaObjMatchRatio) + ' for mediafile: ' +str(mediaObjReturn))
+#    sys.exit(1)
     return mediaObjReturn 
 
 
@@ -332,10 +326,12 @@ if __name__ == "__main__":
        drive.closeTray()
     
     if not drive.isDiscInserted():
-        print 'No disc inserted!'
+        logging.error('No disc inserted!')
         sys.exit(1)
 
     else:
+        logging.info('Ripsnort begin -------')
+
         #load config
         config = inireader.loadFile(os.path.join(dirname,'config.ini'))
 
@@ -379,7 +375,7 @@ if __name__ == "__main__":
             ripPathIncomplete = config['ripper']['tv_incomplete_save_path']
             
         else:
-            print 'Unexpected content type ' + str(contentType)
+            logging.error('Unexpected content type ' + str(contentType))
             sys.exit(1)
             
         logging.debug('MinDuration ' + str(minDuration) + ' maxDuration ' + str(maxDuration) + ' ripExtraContent ' + str(ripExtraContent))
@@ -404,7 +400,7 @@ if __name__ == "__main__":
             if len(ripTracks) > 0:
                 notify.startedRippingTracks( ripTracks, discName.formattedName )
             
-#            ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,discName.formattedName) )
+            ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,discName.formattedName) )
             
             ripTrackMediaMap = {}
 
@@ -454,9 +450,11 @@ if __name__ == "__main__":
                 notify.finishedRippingTracks( ripTracks, discName.formattedName, ripTrackMediaMap.values() )
             else:
                 notify.failure( discName.formattedName, 'Failed to locate correct video tracks to rip' )
-
-        #lastly eject the tray
+                
+        logging.info('Ejecting drive: ' + str(discdevice))
         drive.openTray()
+        
+        logging.info('Ripsnort complete -------')
         
     
     

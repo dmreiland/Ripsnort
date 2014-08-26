@@ -85,7 +85,7 @@ class DiscDrive:
             try:
                 subprocess.check_output(['eject','-T',self.deviceID])
             except subprocess.CalledProcessError as e:
-                print( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
+                logging.error( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)
 
         else:
@@ -101,7 +101,7 @@ class DiscDrive:
             try:
                 subprocess.check_output(['drutil','-drive',str(self._macDriveNumber()),'tray','eject'])
             except subprocess.CalledProcessError as e:
-                print( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
+                logging.error( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)
 
         elif self.osType == OS_WIN:
@@ -112,7 +112,7 @@ class DiscDrive:
             try:
                 subprocess.check_output(['eject',self.deviceID])
             except subprocess.CalledProcessError as e:
-                print( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
+                logging.error( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
                 sys.exit(1)
 
         else:

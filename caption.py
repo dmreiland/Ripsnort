@@ -5,12 +5,16 @@
 import re
 import os
 import sys
-import difflib
 import logging
 import subprocess
 
 
 import apppath
+
+dirname = os.path.dirname(os.path.realpath( __file__ ))
+
+sys.path.append( os.path.join(dirname,"utils") )
+import levenshtein_distance
 
 
 COMPARE_MATCH_MIN_RATIO = 0.90
@@ -37,8 +41,13 @@ class Caption:
             caption.textCompare = Caption._textForComparison(caption.text)
             
         textB = caption.textCompare
+        
+        distance = abs( float( levenshtein_distance.distanceBetweenStrings(textA,textB) ) )
 
-        matchRatio = difflib.SequenceMatcher(None,textA,textB).ratio()
+        textALen = len(textA)
+        matchRatio = (textALen-distance) / textALen
+        matchRatio = abs(matchRatio)
+
         logging.debug('Match ratio: ' + str(matchRatio))
         
         return matchRatio
@@ -70,11 +79,14 @@ class Caption:
         #remove anything in square brackets
         textA = re.sub('\[.*\]',' ',textA)
         
+        #remove '
+        textA = textA.replace('\'','')
+        
         #remove any special characters
         textA = re.sub('\W',' ',textA)
         
         #remove any double/triple whitespace
-        textA = re.sub('\s{2,}',' ',textA)
+        textA = re.sub('\s+', textA, ' ')
         
         textA = textA.replace(' a ',' ')
         textA = textA.replace(' at ',' ')

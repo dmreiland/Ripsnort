@@ -58,7 +58,7 @@ class MediaScraper:
         results = self.api.findMovie(movie,year)
         
         if len(results) == 0:
-            logging.info('No results found for ' + movie + ', searching for acronyms')
+            logging.debug('No results found for ' + movie + ', searching for acronyms')
 
             acronyms = MediaScraper._acronymsFromNameWithType(movie,'movie')
 
@@ -132,15 +132,11 @@ class MediaScraper:
             logging.error('Unknown content type:' + contentType)
             contentReturn = None
         
-        print 'Content before filter: ' + str(contentReturn)
-        
         '''If we have to filter on the duration and the results are present use the MediaContent method hasDurationBetweenMaxMin to filter'''
         if targetDurationS is not None and contentReturn is not None:
             maxTargetDurationS = targetDurationS + ( targetDurationS * durationTolerance )
             minTargetDurationS = targetDurationS - ( targetDurationS * durationTolerance )
             contentReturn = filter(lambda x: x.hasDurationBetweenMaxMin(maxTargetDurationS,minTargetDurationS), contentReturn)
-        
-        print 'Content after filter: ' + str(contentReturn)
         
         return contentReturn
 

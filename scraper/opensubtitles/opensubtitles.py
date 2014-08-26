@@ -91,7 +91,7 @@ class OpenSubtitles:
         if self.sessionToken is not None:
             self._logOut(self.sessionToken)
     
-    def subtitlesForMovie(self,movieObject,downloadLimit=5,language='eng'):
+    def subtitlesForMovie(self,movieObject,downloadLimit=3,language='eng'):
         captions = []
     
         imdbId = movieObject.unique_id.replace('tt','')
@@ -119,7 +119,7 @@ class OpenSubtitles:
         logging.debug('Returning captions: ' + str(captions))
         return captions
 
-    def subtitlesForTVEpisode(self,tvepisodeObject,downloadLimit=5,language='eng'):
+    def subtitlesForTVEpisode(self,tvepisodeObject,downloadLimit=3,language='eng'):
         captions = []
     
         imdbId = tvepisodeObject.unique_id.replace('tt','')
