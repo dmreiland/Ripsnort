@@ -243,11 +243,11 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
 
                 logging.info('Got match ratio: ' + str(newRatio) + ' for media: ' + str(mediaObj))
                 
-                if newRatio > mediaObjMatchRatio and newRatio > 0.50:
+                if newRatio > mediaObjMatchRatio and newRatio > 0.70:
                     mediaObjMatchRatio = newRatio
                     mediaObjReturn = mediaObj
 
-                if newRatio > 0.50:
+                if newRatio > 0.90:
                     logging.info('Ending search prematurely, result found with confidence(' +str(newRatio)+ ')')
                     return mediaObjReturn
         import time
@@ -315,10 +315,10 @@ if __name__ == "__main__":
         sys.exit(1)
         
     if loggingLevel == "debug":
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
         logging.debug('Verbose logging enabled')
     elif loggingLevel == "info":
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
     drive = disc_drive.DiscDrive(discdevice)
     
@@ -411,6 +411,7 @@ if __name__ == "__main__":
                     logging.error('Failed to find extracted ripped file: ' + srcFile)
                     continue
                 
+                logging.info('Finding media for track: ' + str(rippedTrack))
                 mediaObj = getMediaObjectForLocalVideoTrack(srcFile,discName,contentType)
                 logging.info('Got media object: ' + str(mediaObj) + ' for file: ' + srcFile)
                 
@@ -447,7 +448,7 @@ if __name__ == "__main__":
             
             if len(ripTracks) > 0:
                 print 'Sending values: ' +str(ripTrackMediaMap.values())
-                notify.finishedRippingTracks( ripTracks, discName.formattedName, ripTrackMediaMap.values() )
+                notify.finishedRippingTracks( ripTracks, discName.formattedName, ripTrackMediaMap )
             else:
                 notify.failure( discName.formattedName, 'Failed to locate correct video tracks to rip' )
                 

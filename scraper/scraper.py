@@ -13,8 +13,11 @@ from MediaContent import MediaContent
 dirname = os.path.dirname(os.path.realpath( __file__ ))
 
 
-sys.path.append(os.path.join(dirname,"opensubtitles"))
+sys.path.append(os.path.join(dirname,"..","utils"))
+import objectcache
 
+
+sys.path.append(os.path.join(dirname,"opensubtitles"))
 import opensubtitles
 
 
@@ -54,9 +57,13 @@ class MediaScraper:
         if year is None:
             year = MediaScraper._extractYearFromName(movie)
             movie = MediaScraper._removeYearFromName(movie)
-            
-        results = self.api.findMovie(movie,year)
-        
+
+        results = objectcache.searchCache('MediaScraper_Movie',movie)
+
+        if results == None:
+            results = self.api.findMovie(movie,year)
+            objectcache.saveObject('MediaScraper_Movie',movie,results)
+
         if len(results) == 0:
             logging.debug('No results found for ' + movie + ', searching for acronyms')
 
@@ -92,7 +99,11 @@ class MediaScraper:
             year = MediaScraper._extractYearFromName(tvshow)
             tvshow = MediaScraper._removeYearFromName(tvshow)
 
-        results = self.api.findTVShow(tvshow,seasonNumber,year)
+        results = objectcache.searchCache('MediaScraper_TVShow',tvshow)
+
+        if results == None:
+            results = self.api.findTVShow(tvshow,seasonNumber,year)
+            objectcache.saveObject('MediaScraper_TVShow',tvshow,results)
 
         if len(results) == 0:
             logging.info('No results found for ' + tvshow + ', searching for acronyms')
@@ -109,10 +120,28 @@ class MediaScraper:
         return results
 
     def findTVEpisode(self,mediaObject,seasonNumber,episodeNumber):
-        return self.api.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
+
+        searchKey = mediaObject.title + '_S' + str(seasonNumber) + '_E' + str(episodeNumber)
+        
+        results = objectcache.searchCache('MediaScraper_TVEpisode',searchKey)
+        
+        if results == None:
+            results = self.api.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
+            objectcache.saveObject('MediaScraper_TVEpisode',searchKey,results)
+        
+        return results
 
     def findTVEpisodesForSeason(self,mediaObject,seasonNumber):
-        return self.api.findTVEpisodesForSeason(mediaObject,seasonNumber)
+
+        searchKey = mediaObject.title + '_S' + str(seasonNumber)
+        
+        results = objectcache.searchCache('MediaScraper_Season',searchKey)
+        
+        if results == None:
+            results = self.api.findTVEpisodesForSeason(mediaObject,seasonNumber)
+            objectcache.saveObject('MediaScraper_Season',searchKey,results)
+        
+        return results
 
     def findContent(self,searchword,contentType,targetDurationS=None,durationTolerance=0.3):
         contentReturn = []

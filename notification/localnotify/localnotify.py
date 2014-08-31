@@ -32,12 +32,12 @@ class LocalNotify:
         
         self._notify(title,subtitle,'')
 
-    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
+    def finishedRippingTracks(self,tracks,discName,ripTracksDict):
         title = "Finished ripping: " + discName
         
         totalDurationMins = 0
 
-        for track in tracks:
+        for track in ripTracksDict.keys():
             totalDurationMins += int(track.durationS/60)
         
         subtitle = str(len(tracks)) + " tracks, total duration " + str(totalDurationMins) + " minutes"

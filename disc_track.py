@@ -89,7 +89,7 @@ class LocalTrackMkv(VideoTrack):
         return info
         
     def vobsubDataForTrackNumber(self,trackNumber):
-        tmpDir = '/tmp'
+        tmpDir = apppath.pathTemporary('disk_track')
         vobsubFile = os.path.join(tmpDir,'tmpFile.sub')
         
         if os.path.exists(vobsubFile):

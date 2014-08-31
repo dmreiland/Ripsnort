@@ -9,6 +9,7 @@ import time
 import shutil
 import socket
 import logging
+import urllib
 import urllib2
 import zipfile
 import difflib
@@ -22,6 +23,7 @@ from MediaContent import *
 
 sys.path.append(os.path.join(dirname,"..",".."))
 import caption
+import apppath
 
 
 
@@ -220,14 +222,14 @@ class OpenSubtitles:
         
         try:
             data = urllib2.urlopen(downloadLink).read()
-        except urllib.error.HTTPError as e:
+        except Exception as e:
             logging.error('Failed to fetch download link: ' + str(downloadLink) + ', err:' + str(e))
         
         if data is None:
             logging.error('Failed to download: ' + str(downloadLink))
             return None
-
-        tmpZip = os.path.join('/','tmp','sub.zip')
+        
+        tmpZip = os.path.join(apppath.pathTemporary('opensubtitles'),'sub.zip')
 
         fTmp = open(tmpZip,'w')
         fTmp.write(data)
@@ -235,15 +237,17 @@ class OpenSubtitles:
 
         fTmp = open(tmpZip, 'r')
 
-        zip = zipfile.ZipFile(fTmp)
-
-        extractPath = os.path.join('/','tmp','subtemp')
+        extractPath = os.path.join(apppath.pathTemporary('opensubtitles'),'subtemp')
 
         if os.path.exists(extractPath):
             shutil.rmtree(extractPath)
             
-        zip.extractall(extractPath)
-        
+        try:
+            zip = zipfile.ZipFile(fTmp)
+            zip.extractall(extractPath)
+        except BadZipFile as e:
+            logging.error('Failed to extract zip: ' + str(e))
+
         for name in os.listdir(extractPath):
             extension = name.split('.')[-1]
 

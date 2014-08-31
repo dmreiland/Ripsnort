@@ -5,6 +5,7 @@
 import re
 import os
 import sys
+import difflib
 import logging
 import subprocess
 
@@ -28,7 +29,11 @@ class Caption:
         self.language = language
         '''Cached copy of text comparison'''
         self.textCompare = None
-        logging.debug('Caption initialized with lang:' + language + ' text:\n' + str(text))
+        
+        textPrint = text
+        if text is not None and len(text) > 50:
+            textPrint = text[0:50]
+        logging.debug('Caption initialized with lang:' + language + ' text:\n' + str(textPrint))
     
     def matchRatioWithCaption(self,caption):
         
@@ -41,14 +46,36 @@ class Caption:
             caption.textCompare = Caption._textForComparison(caption.text)
             
         textB = caption.textCompare
+                
+        matchRatio = difflib.SequenceMatcher(None,self.textCompare,caption.textCompare).ratio()
         
-        distance = abs( float( levenshtein_distance.distanceBetweenStrings(textA,textB) ) )
+        '''Check ratio is sufficient to do a full scan'''
+        if matchRatio > 0.02:
 
-        textALen = len(textA)
-        matchRatio = (textALen-distance) / textALen
-        matchRatio = abs(matchRatio)
+            '''Due to the levenshtein distance being computationally expensive. Break up the task into 2000 char blocks and average the final result'''
+            compareRate = 2000
+        
+            matchRatios = []
+        
+            while len(textA) > compareRate and len(textB) > compareRate:
+                logging.info('Comparing text ' + str(len(textA)) + ', ' + str(len(textB)))
+                distance = abs( float( levenshtein_distance.distanceBetweenStrings(textA[0:compareRate],textB[0:compareRate]) ) )
+                newRatio = (float(compareRate)-distance) / float(compareRate)
+                matchRatios.append(newRatio)
+                textA = textA[compareRate:len(textA)]
+                textB = textB[compareRate:len(textB)]
 
-        logging.debug('Match ratio: ' + str(matchRatio))
+            distance = abs( float( levenshtein_distance.distanceBetweenStrings(textA,textB) ) )
+
+            textALen = float(len(textA))
+            lastRatio = (textALen-distance) / textALen
+            lastRatio = abs(lastRatio)
+        
+            matchRatios.append(lastRatio)
+        
+            matchRatio = sum(matchRatios) / float(len(matchRatios))
+
+        logging.info('Match ratio average: ' + str(matchRatio))
         
         return matchRatio
     
@@ -111,8 +138,8 @@ class Caption:
     def __repr__(self):
         textPrint = ''
         if self.text is not None:
-            if len(self.text) > 30:
-                textPrint = self.text[0:30]
+            if len(self.text) > 50:
+                textPrint = self.text[0:50]
             else:
                 textPrint = self.text
 
@@ -157,8 +184,8 @@ class SRTCaption(Caption):
     def __repr__(self):
         textPrint = ''
         if self.text is not None:
-            if len(self.text) > 30:
-                textPrint = self.text[0:30]
+            if len(self.text) > 50:
+                textPrint = self.text[0:50]
             else:
                 textPrint = self.text
 
@@ -174,12 +201,14 @@ class SRTCaption(Caption):
         try:
             for s in splits:
                 r = regex.search(s)
-                text = r.groups()[3]
-                #Remove any '<>' from text i.e. italics
-                text = re.sub(r'\<.*?\>','',text)
-                textReturn += text + '\n'
-        except:
-            logging.error('Failed to extract srt:\n' + srtText)
+                
+                if r is not None:
+                    text = r.groups()[3]
+                    #Remove any '<>' from text i.e. italics
+                    text = re.sub(r'<[^>]*>','',text)
+                    textReturn += text + '\n'
+        except Exception as e:
+            logging.error('Failed to extract srt:\n' + str(e))
 
         return textReturn
 
@@ -199,8 +228,8 @@ class VobSubCaption(Caption):
     def __repr__(self):
         textPrint = ''
         if self.text is not None:
-            if len(self.text) > 30:
-                textPrint = self.text[0:30]
+            if len(self.text) > 50:
+                textPrint = self.text[0:50]
             else:
                 textPrint = self.text
 
@@ -213,9 +242,9 @@ class VobSubCaption(Caption):
         if vobsubPath is None:
             return None
             
-        tmpSubFile = os.path.join('/','tmp','subtitle.sub')
-        tmpIdxFile = os.path.join('/','tmp','subtitle.idx')
-        tmpSrtFile = os.path.join('/','tmp','subtitle.srt')
+        tmpSubFile = os.path.join(apppath.pathTemporary('caption'),'subtitle.sub')
+        tmpIdxFile = os.path.join(apppath.pathTemporary('caption'),'subtitle.idx')
+        tmpSrtFile = os.path.join(apppath.pathTemporary('caption'),'subtitle.srt')
         
         if os.path.exists(tmpSubFile):
             os.remove(tmpSubFile)

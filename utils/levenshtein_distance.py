@@ -17,18 +17,6 @@ def distanceBetweenStrings(needle, haystack):
 
     doesLevenshteinModuleExist = False
 
-    try:
-        imp.find_module('editdist')
-        doesLevenshteinModuleExist = True
-    except ImportError:
-        pass
-    
-    if doesLevenshteinModuleExist:
-        import editdist
-        return editdist.distance(needle,haystack)
-    else:
-        logging.warn('Using local levenshtein calculation. Recommend installing \'editdist\' module to improve performance (https://pypi.python.org/pypi/editdist/0.1) this may take some time, please be patient')
-
     m, n = len(needle), len(haystack)
 
     # base cases

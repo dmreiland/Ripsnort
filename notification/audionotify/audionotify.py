@@ -3,21 +3,19 @@
 
 
 import os
+import sys
 import logging
+
+
+dirname = os.path.dirname(os.path.realpath( __file__ ))
+
+sys.path.append( os.path.join(dirname,'..','..') )
+import apppath
 
 
 class AudioNotify:
     def __init__(self,params):
-        self.temporaryDirectory = None
-        import platform
-
-        platformName = platform.system().lower().strip()
-        
-        if platformName == 'darwin' or platformName == 'linux':
-            self.temporaryDirectory = '/tmp/ripsnort'
-            
-        if not os.path.isdir(self.temporaryDirectory):
-            os.makedirs(self.temporaryDirectory)
+        self.temporaryDirectory = apppath.pathTemporary('audionotify')
 
         self.pathSoundClipBackupStarted = None
 
@@ -79,7 +77,7 @@ class AudioNotify:
         if self.pathSoundClipRipStarted is not None:
             AudioNotify._playSound( self.pathSoundClipRipStarted )
 
-    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
+    def finishedRippingTracks(self,tracks,discName,ripTracksDict={}):
         if self.pathSoundClipRipFinished is not None:
             AudioNotify._playSound( self.pathSoundClipRipFinished )
 

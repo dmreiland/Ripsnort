@@ -3,9 +3,21 @@
 
 
 import os
+import tempfile
 import platform
 import subprocess
 
+
+def pathTemporary(subFolder=None):
+    tempDir = tempfile.gettempdir()
+    
+    if subFolder is not None:
+        tempDir = os.path.join(tempDir,subFolder)
+        
+    if os.path.exists(tempDir) == False:
+        os.makedirs(tempDir)
+    
+    return tempDir
 
 def pathForBinary(binApp):
     cmdargs = ['which',binApp]

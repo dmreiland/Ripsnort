@@ -55,24 +55,56 @@ class EmailSMTP:
         
         self._sendMessage(m.as_string())
         
-    def finishedRippingTracks(self,tracks,discName,mediaObjects=[]):
-        message = "Finished ripping tracks: <br>\n"
+    def finishedRippingTracks(self,tracks,discName,ripTracksDict={}):
+        message = "Finished ripping tracks: <br><br>\n"
+        
+        if ripTracksDict is None:
+            message += "  <strong> Failed to rip any disc tracks </strong>"
+        elif len(ripTracksDict.values()) == 0:
+            message += "  <strong> Failed to rip any disc tracks </strong>"
+        else:
+            ripTracksOrderedList = ripTracksDict.values()
+            
+            allTracksHaveEpisodeNumber = True
+            
+            for mediaObj in ripTracksOrderedList:
+                if not hasattr(mediaObj,'episode_number'):
+                    allTracksHaveEpisodeNumber = False
 
-        for track in tracks:
-            message += "  <strong>" + track.outputFileName + "</strong>, " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes<br>\n"
-            
-        if len(mediaObjects) > 0:
-            message += "<br><hr><br>\n"
-            message += mediaObjects[0].title + " (" + str(mediaObjects[0].production_year) + ") <br>\b"
-            message += mediaObjects[0].plot_outline + "<br>\n"
-            message += "Genres: " + " ".join( mediaObjects[0].genres ) + "<br>\n"
-            
-            
-            if hasattr(mediaObjects[0],'season_number') and mediaObjects[0].season_number is not None:
-                message += "Season: " + str(mediaObjects[0].season_number) + "<br>\n"
+            if allTracksHaveEpisodeNumber:
+                ripTracksOrderedList.sort(key=lambda x: x.episode_number)
+                ripTracksOrderedList.reverse()
+
+            for mediaObj in ripTracksOrderedList:
                 
-            if mediaObjects[0].public_url is not None:
-                message += "<a href=" + mediaObjects[0].public_url + ">Public link</a>"
+                track = None
+                
+                for key in ripTracksDict.keys():
+                    mediaObjCmp = ripTracksDict[key]
+                    if mediaObjCmp == mediaObj:
+                        track = key
+
+                message += "  <strong>" + str(track.outputFileName) + "</strong>, " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes<br>\n"
+
+                if mediaObj is None:
+                    message += "  <strong> Failed to find a match for this video file </strong>"
+                else:
+                    message += str(mediaObj.title) + " (" + str(mediaObj.production_year) + ") <br>\n"
+
+                    if hasattr(mediaObj,'episode_number') and mediaObj.episode_number is not None:
+                        message += "Episode: " + str(mediaObj.episode_number) + "<br>\n"
+                    if hasattr(mediaObj,'episode_title') and mediaObj.episode_title is not None:
+                        message += "Episode Title: " + str(mediaObj.episode_title) + "<br>\n"
+                    if hasattr(mediaObj,'season_number') and mediaObj.season_number is not None:
+                        message += "Season: " + str(mediaObj.season_number) + "<br>\n"
+
+                    message += mediaObj.plot_outline + "<br>\n"
+                    message += "Genres: " + " ".join( mediaObj.genres ) + "<br>\n"
+
+                    if mediaObj.public_url is not None:
+                        message += "<a href=" + mediaObj.public_url + ">Public link</a>"
+
+                    message += "<br><hr><br>\n"
 
         m = MIMEMultipart('alternate')
         m.attach( MIMEText(message, 'html') )
