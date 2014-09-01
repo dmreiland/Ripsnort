@@ -103,7 +103,7 @@ class OpenSubtitles:
         urlDownloadLinks = self._fetchZipDownloadLinks(imdbId,language)
 
         for downloadLink in urlDownloadLinks:
-            captionObj = self._downloadZippedSrtAndLoadCaption(downloadLink,language)
+            captionObj = self._downloadZippedCaptionAndExtract(downloadLink,language)
 
             if captionObj is not None:
                 captionObj.data_source = 'opensubtitles'
@@ -154,7 +154,7 @@ class OpenSubtitles:
 
         try:
             # Connection to opensubtitles.org server
-            session = self.server.LogIn(username, password, language, 'OS Test User Agent')
+            session = self.server.LogIn(username, password, language, 'ripsnort')
 
             if session is None or session['status'] != '200 OK':
                 logging.error('Failed to login to opensubtitles: ' + str(session))
@@ -224,6 +224,7 @@ class OpenSubtitles:
             data = urllib2.urlopen(downloadLink).read()
         except Exception as e:
             logging.error('Failed to fetch download link: ' + str(downloadLink) + ', err:' + str(e))
+            data = None
         
         if data is None:
             logging.error('Failed to download: ' + str(downloadLink))
@@ -311,7 +312,6 @@ class OpenSubtitles:
                 sortedList.append(caption)
             
         return sortedList
-
 
 def test():
     s = OpenSubtitles()

@@ -35,7 +35,7 @@ class Caption:
             textPrint = text[0:50]
         logging.debug('Caption initialized with lang:' + language + ' text:\n' + str(textPrint))
     
-    def matchRatioWithCaption(self,caption):
+    def matchRatioWithCaption(self,caption,quickMatch=False):
         
         if self.textCompare == None:
             self.textCompare = Caption._textForComparison(self.text)
@@ -50,32 +50,12 @@ class Caption:
         matchRatio = difflib.SequenceMatcher(None,self.textCompare,caption.textCompare).ratio()
         
         '''Check ratio is sufficient to do a full scan'''
-        if matchRatio > 0.02:
-
-            '''Due to the levenshtein distance being computationally expensive. Break up the task into 2000 char blocks and average the final result'''
-            compareRate = 2000
-        
-            matchRatios = []
-        
-            while len(textA) > compareRate and len(textB) > compareRate:
-                logging.info('Comparing text ' + str(len(textA)) + ', ' + str(len(textB)))
-                distance = abs( float( levenshtein_distance.distanceBetweenStrings(textA[0:compareRate],textB[0:compareRate]) ) )
-                newRatio = (float(compareRate)-distance) / float(compareRate)
-                matchRatios.append(newRatio)
-                textA = textA[compareRate:len(textA)]
-                textB = textB[compareRate:len(textB)]
-
+        if matchRatio > 0.02 and not quickMatch:
             distance = abs( float( levenshtein_distance.distanceBetweenStrings(textA,textB) ) )
-
             textALen = float(len(textA))
-            lastRatio = (textALen-distance) / textALen
-            lastRatio = abs(lastRatio)
-        
-            matchRatios.append(lastRatio)
-        
-            matchRatio = sum(matchRatios) / float(len(matchRatios))
+            matchRatio = (textALen-distance) / textALen
 
-        logging.info('Match ratio average: ' + str(matchRatio))
+        logging.info('Match ratio: ' + str(matchRatio))
         
         return matchRatio
     

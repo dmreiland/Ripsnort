@@ -334,7 +334,15 @@ class SubtitleScraper:
         return "<SubtitleScraper type:" +str(self.api)+ ">"
     
     def subtitlesForMovie(self,movieObject):
-        return self.scraper.subtitlesForMovie(movieObject)
+        key = str(movieObject.unique_id) + '_' + str(movieObject.scraper_source)
+
+        results = objectcache.searchCache('SubtitleScraper_Movie',key)
+
+        if results == None:
+            results = self._api().subtitlesForMovie(movieObject)
+            objectcache.saveObject('MediaScraper_Movie',key,results)
+
+        return results
 
     def subtitlesForTVShow(self,tvshowObject):
         '''Currently no support'''
@@ -342,26 +350,35 @@ class SubtitleScraper:
         #return self.scraper.subtitlesForTVShow(movieObject)
 
     def subtitlesForTVEpisode(self,episodeObject):
-        return self.scraper.subtitlesForMovie(movieObject)
+        key = str(episodeObject.unique_id) + '_' + str(episodeObject.scraper_source)
+
+        results = objectcache.searchCache('SubtitleScraper_TVEpisode',key)
+
+        if results == None:
+            results = self._api().subtitlesForMovie(episodeObject)
+            objectcache.saveObject('SubtitleScraper_TVEpisode',key,results)
+
+        return results
         
     def subtitlesForMediaContent(self,mediaObject):
         subs = []
 
         if mediaObject.content_type == 'movie':
-            api = opensubtitles.OpenSubtitles()
-            subs = api.subtitlesForMovie(self,mediaObject)
+            subs = self.subtitlesForMovie(mediaObject)
 
         elif mediaObject.content_type == 'tvshow':
             logging.error('Unable to download subtitles for tvshow. Must be a single entity')
 
         elif mediaObject.content_type == 'tvepisode':
-            api = opensubtitles.OpenSubtitles()
-            subs = api.subtitlesForTVEpisode(mediaObject)
+            subs = self.subtitlesForTVEpisode(mediaObject)
 
         else:
-            logging.error('Unable content type: ' + str(mediaObject.content_type))
+            logging.error('Unable content type for object: ' + str(mediaObject))
             
         return subs
+    
+    def _api(self):
+        return opensubtitles.OpenSubtitles()
 
 def test():
     logging.basicConfig(level=logging.DEBUG)

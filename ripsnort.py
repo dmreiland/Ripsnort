@@ -226,20 +226,17 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
                 
         for mediaObj in mediaObjsCompare:
             subsRemote = scraper.SubtitleScraper().subtitlesForMediaContent(mediaObj)
+            
+            if len(subsRemote) == 0:
+                logging.error('No subs to compare')
+                continue
+
+            subCmp = subsRemote[0]
 
             logging.debug('Testing for media object: ' + str(mediaObj) + ', found ' + str(len(subsRemote)) + ' subtitles')
             
             for subLocal in localVideoTrack.subtitles:
-                closestMatchCaption = subLocal.findClosestMatchFromCaptions(subsRemote)
-
-                import time
-                time.sleep(5)
-
-                if closestMatchCaption is None:
-                    '''Nothing found. skip'''
-                    continue
-
-                newRatio = subLocal.matchRatioWithCaption(closestMatchCaption)
+                newRatio = subLocal.matchRatioWithCaption(subCmp)
 
                 logging.info('Got match ratio: ' + str(newRatio) + ' for media: ' + str(mediaObj))
                 
@@ -250,11 +247,8 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
                 if newRatio > 0.90:
                     logging.info('Ending search prematurely, result found with confidence(' +str(newRatio)+ ')')
                     return mediaObjReturn
-        import time
-        time.sleep(1)
 
     logging.info('Best match ratio:' + str(mediaObjMatchRatio) + ' for mediafile: ' +str(mediaObjReturn))
-#    sys.exit(1)
     return mediaObjReturn 
 
 

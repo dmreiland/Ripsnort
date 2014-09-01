@@ -8,21 +8,9 @@ import shelve
 import tempfile
 
 
-def pathTemporary(subFolder=None):
-    tempDir = tempfile.gettempdir()
-    
-    if subFolder is not None:
-        tempDir = os.path.join(tempDir,subFolder)
-        
-    if os.path.exists(tempDir) == False:
-        os.makedirs(tempDir)
-    
-    return tempDir
-
-
 def _openShelveDbForCaller(caller):
-    tempDir = os.path.join(tempfile.gettempdir(),'cache')
-    tempFile = os.path.join(tempDir,caller+'.db')
+    tempDir = os.path.join(tempfile.gettempdir(),'ripsnort','cache')
+    tempFile = os.path.join(tempDir,caller)
     
     if os.path.exists(tempDir) == False:
         os.makedirs(tempDir)
