@@ -48,6 +48,19 @@ def isInternetConnectionAvailable():
         return True
     except urllib2.URLError as err:
         return False
+    
+def doesFolderContainVideoFiles(folderDir):
+    doesContentVideoFiles = False
+    
+    for fileName in os.listdir(folderDir):
+        try:
+            ext = fileName.split('.')[-1]
+            if ext == 'mkv' or ext == 'mp4' or ext == 'avi' or ext == 'm2ts' or ext == 'ts':
+                doesContentVideoFiles = True
+        except:
+            pass
+    
+    return doesContentVideoFiles
 
 
 def contentTypeForTracksAndName(tracks,name,config):
@@ -206,7 +219,7 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
             mediaObjsCompare = []
             for mediaObj in candidateList:
                 seasonNumber = discname.season
-                logging.info('Searching for episodes from season ' + str(seasonNumber) + ' show:' + str(mediaObj))
+                logging.debug('Searching for episodes from season ' + str(seasonNumber) + ' show:' + str(mediaObj))
                 tvMediaObjs = scraper.MediaScraper().findTVEpisodesForSeason(mediaObj,seasonNumber)
                 mediaObjsCompare += tvMediaObjs
                 import time
@@ -238,17 +251,17 @@ def getMediaObjectForLocalVideoTrack(trackPath,discname,contentType):
             for subLocal in localVideoTrack.subtitles:
                 newRatio = subLocal.matchRatioWithCaption(subCmp)
 
-                logging.info('Got match ratio: ' + str(newRatio) + ' for media: ' + str(mediaObj))
+                logging.debug('Got match ratio: ' + str(newRatio) + ' for media: ' + str(mediaObj))
                 
                 if newRatio > mediaObjMatchRatio and newRatio > 0.70:
                     mediaObjMatchRatio = newRatio
                     mediaObjReturn = mediaObj
 
                 if newRatio > 0.90:
-                    logging.info('Ending search prematurely, result found with confidence(' +str(newRatio)+ ')')
+                    logging.debug('Ending search prematurely, result found with confidence(' +str(newRatio)+ ')')
                     return mediaObjReturn
 
-    logging.info('Best match ratio:' + str(mediaObjMatchRatio) + ' for mediafile: ' +str(mediaObjReturn))
+    logging.debug('Best match ratio:' + str(mediaObjMatchRatio) + ' for mediafile: ' +str(mediaObjReturn))
     return mediaObjReturn 
 
 
@@ -394,7 +407,7 @@ if __name__ == "__main__":
             if len(ripTracks) > 0:
                 notify.startedRippingTracks( ripTracks, discName.formattedName )
             
-            ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,discName.formattedName) )
+#            ripper.ripDiscTracks( ripTracks, os.path.join(ripPathIncomplete,discName.formattedName) )
             
             ripTrackMediaMap = {}
 
@@ -405,9 +418,9 @@ if __name__ == "__main__":
                     logging.error('Failed to find extracted ripped file: ' + srcFile)
                     continue
                 
-                logging.info('Finding media for track: ' + str(rippedTrack))
+                logging.debug('Finding media for track: ' + str(rippedTrack))
                 mediaObj = getMediaObjectForLocalVideoTrack(srcFile,discName,contentType)
-                logging.info('Got media object: ' + str(mediaObj) + ' for file: ' + srcFile)
+                logging.debug('Got media object: ' + str(mediaObj) + ' for file: ' + srcFile)
                 
                 if mediaObj is None:
                     continue
@@ -436,12 +449,15 @@ if __name__ == "__main__":
                 logging.info('Moving file from: ' + srcFile + ' destination: ' + dstFile)
 
                 os.rename(srcFile,dstFile)
-#                shutil.rmtree( os.path.join(ripPathIncomplete,discName.formattedName) )
+
+            incompleteFolder = os.path.join(ripPathIncomplete,discName.formattedName) 
+            if not doesFolderContainVideoFiles(incompleteFolder):
+                logging.info('Removing folder: ' + str(incompleteFolder))
+                shutil.rmtree(incompleteFolder)
                 
             #TODO change notify message to include move location
             
             if len(ripTracks) > 0:
-                print 'Sending values: ' +str(ripTrackMediaMap.values())
                 notify.finishedRippingTracks( ripTracks, discName.formattedName, ripTrackMediaMap )
             else:
                 notify.failure( discName.formattedName, 'Failed to locate correct video tracks to rip' )
