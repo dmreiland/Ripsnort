@@ -87,7 +87,7 @@ class OpenSubtitles:
         self.server = xmlrpclib.ServerProxy('http://api.opensubtitles.org/xml-rpc')
         socket.setdefaulttimeout(10)
         self.sessionToken = self._logIn(username, password)
-        logging.debug('OpenSubtitles initialized')
+        logging.debug('OpenSubtitles initialized: ' + str(self.sessionToken) + ', ' + str(username) + ':' + str(password))
 
     def __del__(self):
         if self.sessionToken is not None:
@@ -95,6 +95,8 @@ class OpenSubtitles:
     
     def subtitlesForMovie(self,movieObject,downloadLimit=3,language='eng'):
         captions = []
+        
+        language = self._get3CharLanguageCodeFromWord(language)
     
         imdbId = movieObject.unique_id.replace('tt','')
 
@@ -102,10 +104,13 @@ class OpenSubtitles:
         
         urlDownloadLinks = self._fetchZipDownloadLinks(imdbId,language)
 
+        logging.debug('Got download links: ' + str(urlDownloadLinks))
+
         for downloadLink in urlDownloadLinks:
             captionObj = self._downloadZippedCaptionAndExtract(downloadLink,language)
+            logging.debug('Got caption ' + str(captionObj))
 
-            if captionObj is not None:
+            if captionObj:
                 captionObj.data_source = 'opensubtitles'
                 captionObj.data_unique_id = 'tt' + imdbId
 
@@ -117,12 +122,14 @@ class OpenSubtitles:
                 break
 
         captions = self._removeSubtitleBadMatchesFromList(captions)
-            
+
         logging.debug('Returning captions: ' + str(captions))
         return captions
 
     def subtitlesForTVEpisode(self,tvepisodeObject,downloadLimit=3,language='eng'):
         captions = []
+        
+        language = self._get3CharLanguageCodeFromWord(language)
     
         imdbId = tvepisodeObject.unique_id.replace('tt','')
 
@@ -130,8 +137,11 @@ class OpenSubtitles:
         
         urlDownloadLinks = self._fetchZipDownloadLinks(imdbId,language,tvepisodeObject.season_number,tvepisodeObject.episode_number)
 
+        logging.debug('Got download links: ' + str(urlDownloadLinks))
+
         for downloadLink in urlDownloadLinks:
             captionObj = self._downloadZippedCaptionAndExtract(downloadLink,language)
+            logging.debug('Got caption ' + str(captionObj))
 
             if captionObj is not None and len(captionObj.text) > 0:
                 captionObj.data_source = 'opensubtitles'
@@ -145,7 +155,11 @@ class OpenSubtitles:
                 break
 
         captions = self._removeSubtitleBadMatchesFromList(captions)
-            
+        
+        #remove duplicates
+        if captions:
+            captions = list(set(captions))
+
         logging.debug('Returning captions: ' + str(captions))
         return captions
         
@@ -196,23 +210,24 @@ class OpenSubtitles:
         
         try:
             results = self.server.SearchSubtitles(self.sessionToken,searchList)
+
+            logging.debug('Got subtitle response: ' + str(results))
+        
+            #Sometimes data is set to False.
+            if results is None or results['data'] == False:
+                logging.warn('Fetch failed: ' + str(results))
+                results['data'] = []
+
+            for result in results['data']:
+                zipLink = result['ZipDownloadLink']
+                zipDownloadLinks.append(zipLink)
         except:
             if retryCount > 1:
-                results = self._downloadZippedCaptionAndExtract(imdbId,language,seasonNumber,episodeNumber,retryCount-1)
+                results = self._fetchZipDownloadLinks(imdbId,language,seasonNumber,episodeNumber,retryCount-1)
             else:
                 logging.error('Failed to search for subtitles: ' + str(searchDict))
-
-#        logging.debug('Got response: ' + str(results))
         
-        #Sometimes data is set to False.
-        if results is None or results['data'] == False:
-            logging.warn('Fetch failed: ' + str(results))
-            results['data'] = []
-
-        for result in results['data']:
-            zipLink = result['ZipDownloadLink']
-            zipDownloadLinks.append(zipLink)
-        
+        logging.debug('Returning zip links' + str(zipDownloadLinks))
         return zipDownloadLinks
 
     def _downloadZippedCaptionAndExtract(self,downloadLink,language):
@@ -246,23 +261,33 @@ class OpenSubtitles:
         try:
             zip = zipfile.ZipFile(fTmp)
             zip.extractall(extractPath)
-        except BadZipFile as e:
+        except Exception as e:
             logging.error('Failed to extract zip: ' + str(e))
 
         for name in os.listdir(extractPath):
             extension = name.split('.')[-1]
 
             if extension == 'xml' or extension == 'html' or extension == 'txt' or extension == 'nfo':
-                '''Ignore file'''
-                pass
+                logging.info('Ignoring file ' + name)
+
             elif extension == 'srt':
                 zip.extract(name,extractPath)
-                extractedFile = os.path.join(extractPath,os.listdir(extractPath)[0])
+                extractedFile = os.path.join(extractPath,name)
                 fSrt = open(extractedFile,'r')
                 srtData = fSrt.read()
+                #tmp
+                open('/tmp/srttext.a','w').write(srtData)
+                assert(len(srtData)>0)
                 fSrt.close()
-                captionObj = caption.SRTCaption(srtData,language)
+                
+                try:
+                    captionObj = caption.SRTCaption(srtData,language)
+                except:
+                    pass
+
                 os.remove(extractedFile)
+                logging.debug('Got SRT caption: ' + str(captionObj))
+                break
 
 #            elif extension == 'sub':
 #                zip.extract(name,extractPath)
@@ -297,19 +322,35 @@ class OpenSubtitles:
         return retLan
     
     def _removeSubtitleBadMatchesFromList(self,captions):
-        sortedList = []
-            
-        #loop through the captions and check if any stand out and remove
-        for i in range(len(captions)):
-            caption = captions[i]
-            captionCompareTextList = []
-            for caption in captions:
-                captionCompareTextList.append(caption.text)
-            
-            compareResults = difflib.get_close_matches(caption.text,captionCompareTextList)
-            
-            if len(compareResults) > 0:
-                sortedList.append(caption)
+        #Order captions by Caption.textSignature()
+        captions.sort()
+        sortedList = captions
+        
+        arrayValsSorted = False
+        
+        #keep removing edge captions idx(0,-1) that are greater than 10% away from the middle until. This should remove any odd looking subtitles from the 'norm'
+        while not arrayValsSorted:
+            didSort = False
+            if len(sortedList) >= 2:
+                captIntA = float( sortedList[0].textSignature() )
+                captIntB = float( sortedList[1].textSignature() )
+                delta = abs(captIntB/captIntA) % 1.0
+                
+                if delta > 0.1:
+                    sortedList.remove(sortedList[0])
+                    didSort = True
+
+            if len(sortedList) >= 2:
+                captIntA = float( sortedList[-1].textSignature() )
+                captIntB = float( sortedList[-2].textSignature() )
+                delta = abs(captIntB/captIntA) % 1.0
+                
+                if delta > 0.1:
+                    del sortedList[-1]
+                    didSort = True
+                    
+            if not didSort:
+                arrayValsSorted = True
             
         return sortedList
 

@@ -27,6 +27,61 @@ class VideoTrack(object):
         self.chapters=0.0
         self.durationS=0.0
         self.subtitles=[]
+        
+    def numberOfSubtitles(self):
+        return len(self.subtitles)
+    
+    def numberOfSubtitlesOfLanguage(self,lang):
+        count = 0
+        
+        for i in range(0,self.numberOfSubtitles()):
+            if self.subtitleLanguageAtIndex(i) == lang:
+                count += 1
+                
+        return count
+
+    def allSubtitleLanguages(self):
+        langs = []
+        
+        for i in range(0,self.numberOfSubtitles()):
+            langs.append(self.subtitleLanguageAtIndex(i))
+            
+        langs = list(set(langs))
+        langs.sort()
+        
+        return langs
+
+    def subtitleOfLanguageAtSubindex(self,lang,index):
+        subLang = None
+        count = 0
+
+        for i in range(0,len(self.subtitles)):
+            langAtIndex = self.subtitleLanguageAtIndex(i)
+            if langAtIndex == lang:
+                if index == count:
+                    subLang = self.subtitleAtIndex(i)
+                count += 1
+
+        return subLang
+    
+    def subtitleLanguageAtIndex(self,index):
+        lang = None
+        try:
+            lang = self.subtitleAtIndex(index).language
+        except:
+            pass
+        return lang
+    
+    def subtitleAtIndex(self,index):
+        subLang = None
+
+        if index < len(self.subtitles):
+            try:
+                subLang = self.subtitles[index]
+            except:
+                pass
+
+        return subLang
 
     def serialize(self):
         retDict = {}
@@ -65,13 +120,61 @@ class LocalTrackMkv(VideoTrack):
         self.gigabytes=self.bytes/1024.0/1024.0
         self.chapters=0.0 #TODO
         
-        mkvInfo = self._loadMkvInfo()
+        self.mkvInfo = self._loadMkvInfo()
         
-        if mkvInfo is not None:
-            self.durationS= int( re.findall(r'\+\ Duration\:\ (\d+)',mkvInfo)[0] )
+        if self.mkvInfo:
+            self.subtitles = []
+            for i in range(0,self.numberOfSubtitles()):
+                self.subtitles.append(None)
         
-        self._loadSubtitles()
+        if self.mkvInfo:
+            self.durationS = int( re.findall(r'\+\ Duration\:\ (\d+)',self.mkvInfo)[0] )
         
+        logging.debug('LocalTrackMkv intialized for path ' + str(self.filepath))
+            
+    def numberOfSubtitles(self):
+        numberOfSubtitles = len(re.findall(r'Track\ type\:\ subtitles',self.mkvInfo))
+        return numberOfSubtitles
+
+    def subtitleAtIndex(self,index):
+        sub = None
+
+        if index < len(self.subtitles):
+            sub = self.subtitles[index]
+            
+            if sub == None:
+                self._loadSubtitleAtIndex(index)
+                sub = self.subtitles[index]
+                logging.debug('Loaded sub at index: ' + str(index) + ', ' + str(sub))
+                
+            assert(sub)
+
+        return sub
+
+    def subtitleLanguageAtIndex(self,index):
+        subLang = None
+
+        if index < len(self.subtitles):
+            if self.subtitles[index]:
+                subLang = self.subtitles[index].language
+            else:
+                currentSubtitleIndex = 0
+
+                if self.mkvInfo:
+                    segmentTracks = self.mkvInfo[self.mkvInfo.find('| + A track'):len(self.mkvInfo)]
+
+                    for segment in segmentTracks.split('| + A track'):
+                        if len(re.findall(r'Track\ type\:\ subtitles',segment)) > 0:
+                            lang = re.findall(r'Language\:\ ...?',segment)[0].replace('Language: ','').strip()
+                            
+                            if index == currentSubtitleIndex:
+                                subLang = lang
+                                break
+
+                            currentSubtitleIndex += 1
+
+        return subLang
+
     def _loadMkvInfo(self):
         cmdargs = [apppath.mkvinfo(),self.filepath]
         logging.debug('Running command ' + ' '.join(cmdargs))
@@ -79,13 +182,11 @@ class LocalTrackMkv(VideoTrack):
         cmd.wait()
         response = cmd.communicate()
         info = response[0].strip()
-        
+
         if '(MKVInfo) Error: Couldn\'t open input file' in info:
             logging.error('Failed to load mkvInfo: ' + info)
             info = None
-        else:
-            logging.debug('Loaded track info: ' + str(info))
-
+            
         return info
         
     def vobsubDataForTrackNumber(self,trackNumber):
@@ -119,53 +220,93 @@ class LocalTrackMkv(VideoTrack):
             idxdata = fIdx.read()
             fIdx.close()
         else:
-            logging.error('Failed to file vobsub file')
+            logging.error('Failed to find vobsub file ' + str(vobsubFile))
 
         return [vobsubdata,idxdata]
+    
+    def pgsDataForTrackNumber(self,trackNumber):
+        tmpDir = apppath.pathTemporary('disk_track')
+        pgsFile = os.path.join(tmpDir,'tmpFile.sup')
+        
+        if os.path.exists(pgsFile):
+            os.remove(pgsFile)
+        
+        cmdargs = [apppath.mkvextract(),'tracks',self.filepath,str(trackNumber)+':'+pgsFile]
+        logging.debug('Running command ' + ' '.join(cmdargs))
 
+        cmd = subprocess.Popen(cmdargs,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        response = cmd.communicate()
         
-    def _loadSubtitles(self,languages=['eng']):
-        logging.debug('Loading subtitles for ' + self.filepath)
-        mkvInfo = self._loadMkvInfo()
+        pgsdata = None
         
-        segmentTracks = mkvInfo[mkvInfo.find('| + A track'):len(mkvInfo)]
+        if os.path.exists(pgsFile):
+            logging.debug('Found pgs file ' + pgsFile)
+            fPgs = open(pgsFile,'r')
+            pgsdata = fPgs.read()
+            assert(len(pgsdata)>0)
+            fPgs.close()
+        else:
+            logging.error('Failed to find PGS file ' + str(pgsFile))
+
+        return pgsdata
+        
+    def _loadSubtitleAtIndex(self,subIndex):
+        logging.debug('Loading subtitles for ' + str(self.filepath) + ', at index: ' + str(subIndex))
+        
+        currentSubtitleIndex = 0
+
+        segmentTracks = self.mkvInfo[self.mkvInfo.find('| + A track'):len(self.mkvInfo)]
         
         for segment in segmentTracks.split('| + A track'):
             if '|  + Track type: subtitles' in segment:
-                lang = re.findall(r'Language\:\ ...?',segment)[0].replace('Language: ','').strip()
-                codec = re.findall(r'Codec ID\:\ \w+?\n',segment)[0].replace('Codec ID: ','').strip()
-                tracknum = int( re.findall(r'Track\ number\:\ \d+',segment)[0].replace('Track number: ','').strip() )
+                codec = re.findall(r'Codec ID\:\ .*\n',segment)[0].replace('Codec ID: ','').strip()
+                tracknum = int( re.findall(r'track\ ID\ for\ mkvmerge\ \&\ mkvextract\:\ \d+',segment)[0].replace('track ID for mkvmerge & mkvextract: ','').strip() )
                 
-                logging.debug('Found subtitle codec: ' + codec + ' language: ' + lang + ' track: ' + str(tracknum))
-                
-                if lang not in languages:
-                    continue
-
-                if codec.lower() == 's_vobsub':
-                    logging.debug('Loading vobsub data for tracknum ' + str(tracknum) + ' language ' + str(lang))
-                
-                    '''sub subtract 1 from tracknumber when called mkextract'''
-                    vobsubdata, idxdata = self.vobsubDataForTrackNumber(tracknum-1)
+                if currentSubtitleIndex == subIndex:
+                    lang = self.subtitleLanguageAtIndex(currentSubtitleIndex)
                     
-                    subtitle = caption.VobSubCaption(vobsubdata,idxdata,lang)
-                    subtitle.data_source = 'makemkv'
+                    if codec.lower() == 's_vobsub':
+                        logging.debug('Loading vobsub data for tracknum ' + str(tracknum) + ' language ' + str(lang))
 
+                        vobsubdata, idxdata = self.vobsubDataForTrackNumber(tracknum)
+                        assert(vobsubdata)
+                        assert(idxdata)
 
-                    self.subtitles.append(subtitle)
+                        newSub = caption.VobSubCaption(vobsubdata,idxdata,lang)
+                        newSub.data_source = 'makemkv'
+                        
+                        assert(len(newSub.text)>0)
+                        
+                        logging.debug('Loaded caption: ' + str(newSub) + 'for index ' + str(subIndex))
 
-                elif codec.lower() == 's_text/utf8':
-                    logging.debug('Loading srt data for tracknum ' + str(tracknum) + ' language ' + str(lang))
-                
-                    '''sub subtract 1 from tracknumber when called mkextract'''
-#                     vobsubdata, idxdata = self.vobsubDataForTrackNumber(tracknum-1)
-#                     
-#                     subtitle = caption.VobSubCaption(vobsubdata,idxdata,lang)
-#                     
-#                     self.subtitles.append(subtitle)
-#                    subtitle.data_source = 'makemkv'
+                        self.subtitles[subIndex] = newSub
+                        assert(self.subtitles[subIndex])
 
-                else:
-                    logging.warn('Unrecognised subtitles codec: ' + codec)
+                    elif codec.lower() == 's_hdmv/pgs':
+                        logging.debug('Loading PGS data for tracknum ' + str(tracknum) + ' language ' + str(lang))
+
+                        '''sub subtract 1 from tracknumber when called mkextract'''
+                        pgsdata = self.pgsDataForTrackNumber(tracknum)
+                        assert(len(pgsdata)>0)
+
+                        newSub = caption.PGSCaption(pgsdata,lang)
+                        newSub.data_source = 'makemkv'
+                        
+                        assert(len(newSub.text)>0)
+                        
+                        logging.debug('Loaded caption: ' + str(newSub) + 'for index ' + str(subIndex))
+
+                        self.subtitles[subIndex] = newSub
+                        assert(self.subtitles[subIndex])
+
+                    elif codec.lower() == 's_text/utf8':
+                        logging.debug('Loading srt data for tracknum ' + str(tracknum) + ' language ' + str(lang))
+                        #TODO
+
+                    else:
+                        logging.warn('Unrecognised subtitles codec: ' + codec)
+
+                currentSubtitleIndex += 1
 
 
 

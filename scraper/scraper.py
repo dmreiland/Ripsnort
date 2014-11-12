@@ -61,7 +61,14 @@ class MediaScraper:
         results = objectcache.searchCache('MediaScraper_Movie',movie)
 
         if results == None:
-            results = self.api.findMovie(movie,year)
+            results = []
+
+            for searchWord in MediaScraper._searchCandidatesFromName(movie):
+                newResults = self.api.findMovie(searchWord,year)
+                
+                if newResults:
+                    results += newResults
+
             objectcache.saveObject('MediaScraper_Movie',movie,results)
 
         if len(results) == 0:
@@ -141,6 +148,44 @@ class MediaScraper:
             results = self.api.findTVEpisodesForSeason(mediaObject,seasonNumber)
             objectcache.saveObject('MediaScraper_Season',searchKey,results)
         
+        if results:
+            results.sort(key=lambda x: float(x.episode_number))
+
+        return results
+
+    def findTVEpisodesForShow(self,mediaObject):
+
+        searchKey = mediaObject.unique_id
+        
+        results = objectcache.searchCache('MediaScraper_Show',searchKey)
+        
+        if results == None:
+            results=[]
+            seasonNumber=1
+            keepSearching=True
+
+            while keepSearching:
+                try:
+                    resultsAppend = self.api.findTVEpisodesForSeason(mediaObject,seasonNumber)
+                except Exception, e:
+                    logging.error('Failed to get episodes for ' + str(mediaObject) + ' season ' + str(seasonNumber) + ' error: ' + str(e))
+                    resultsAppend = []
+
+                if len(resultsAppend) == 0:
+                    keepSearching = False
+                else:
+                    results += resultsAppend
+                    seasonNumber += 1
+                    
+                import time
+                time.sleep(5)
+
+            if len(results) > 0:
+                objectcache.saveObject('MediaScraper_Show',searchKey,results)
+        
+        if results:
+            results.sort(key=lambda x: float((x.season_number*999) + x.episode_number))
+        
         return results
 
     def findContent(self,searchword,contentType,targetDurationS=None,durationTolerance=0.3):
@@ -158,8 +203,18 @@ class MediaScraper:
             contentReturn = self.findTVEpisode(searchword)
 
         else:
-            logging.error('Unknown content type:' + contentType)
-            contentReturn = None
+            logging.warn('Unknown content type:' + contentType + ', searching for all types')
+            contentReturn = []
+            
+            contentMovie = self.findContent(searchword,'movie',targetDurationS,durationTolerance)
+            
+            if contentMovie:
+                contentReturn += contentMovie
+
+            contentTVShow = self.findContent(searchword,'tvshow',targetDurationS,durationTolerance)
+            
+            if contentTVShow:
+                contentReturn += contentTVShow 
         
         '''If we have to filter on the duration and the results are present use the MediaContent method hasDurationBetweenMaxMin to filter'''
         if targetDurationS is not None and contentReturn is not None:
@@ -168,6 +223,32 @@ class MediaScraper:
             contentReturn = filter(lambda x: x.hasDurationBetweenMaxMin(maxTargetDurationS,minTargetDurationS), contentReturn)
         
         return contentReturn
+    
+    @staticmethod
+    def _searchCandidatesFromName(name):
+        searchCandidates = []
+        searchCandidates.append(name)
+        
+        if '-' in name:
+            newName = name.replace('-',' ')
+            newName = newName.replace('\s{1,}',' ')
+            
+            if len(newName) != len(name):
+                searchCandidates.append(newName)
+
+            newNameTheRemoved = re.sub(r'(?i)the\ movie','',newName)
+            newNameTheRemoved = re.sub(r'(?i)\ de movie','',newNameTheRemoved)
+            
+            if len(newNameTheRemoved) != len(name):
+                searchCandidates.append(newNameTheRemoved)
+            
+            newNameYearRemoved = re.sub(r'(?i)\d{4}',' ',newName)
+            newNameYearRemoved = re.sub(r'\s{1,}',' ',newName)
+            
+            if len(newNameYearRemoved) != len(name):
+                searchCandidates.append(newNameYearRemoved)
+            
+        return searchCandidates
 
     @staticmethod
     def _extractYearFromName(name):
@@ -333,44 +414,44 @@ class SubtitleScraper:
     def __repr__(self):
         return "<SubtitleScraper type:" +str(self.api)+ ">"
     
-    def subtitlesForMovie(self,movieObject):
-        key = str(movieObject.unique_id) + '_' + str(movieObject.scraper_source)
+    def subtitlesForMovie(self,movieObject,language='eng'):
+        key = str(movieObject.unique_id) + '_' + language + '_' + str(movieObject.scraper_source)
 
         results = objectcache.searchCache('SubtitleScraper_Movie',key)
 
         if results == None:
-            results = self._api().subtitlesForMovie(movieObject)
+            results = self._api().subtitlesForMovie(movieObject,3,language)
             objectcache.saveObject('MediaScraper_Movie',key,results)
 
         return results
 
-    def subtitlesForTVShow(self,tvshowObject):
+    def subtitlesForTVShow(self,tvshowObject,language='eng'):
         '''Currently no support'''
         return None
         #return self.scraper.subtitlesForTVShow(movieObject)
 
-    def subtitlesForTVEpisode(self,episodeObject):
-        key = str(episodeObject.unique_id) + '_' + str(episodeObject.scraper_source)
-
+    def subtitlesForTVEpisode(self,episodeObject,language='eng'):
+        key = str(episodeObject.unique_id) + '_' + language + '_' + str(episodeObject.scraper_source)
+        
         results = objectcache.searchCache('SubtitleScraper_TVEpisode',key)
-
+        
         if results == None:
-            results = self._api().subtitlesForMovie(episodeObject)
+            results = self._api().subtitlesForMovie(episodeObject,5,language)
             objectcache.saveObject('SubtitleScraper_TVEpisode',key,results)
 
         return results
         
-    def subtitlesForMediaContent(self,mediaObject):
+    def subtitlesForMediaContent(self,mediaObject,language='eng'):
         subs = []
 
         if mediaObject.content_type == 'movie':
-            subs = self.subtitlesForMovie(mediaObject)
+            subs = self.subtitlesForMovie(mediaObject,language)
 
         elif mediaObject.content_type == 'tvshow':
             logging.error('Unable to download subtitles for tvshow. Must be a single entity')
 
         elif mediaObject.content_type == 'tvepisode':
-            subs = self.subtitlesForTVEpisode(mediaObject)
+            subs = self.subtitlesForTVEpisode(mediaObject,language)
 
         else:
             logging.error('Unable content type for object: ' + str(mediaObject))
@@ -386,6 +467,9 @@ def test():
     s = SubtitleScraper()
 
     m = MediaScraper()
+    
+    assert m.findMovie('Thunderbirds - De Movie 2004')[0].production_year == 2004
+    assert m.findMovie('Thunderbirds 2004')[0].production_year == 2004
     
     tvShow = m.findTVShow('The Brittas Empire')[0]
 

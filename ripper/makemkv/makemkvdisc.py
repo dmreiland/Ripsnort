@@ -15,44 +15,48 @@ import md5
 dirname = os.path.dirname(__file__)
 
 sys.path.append(os.path.join(dirname,"..",".."))
-from disc_track import DiscTrack
+from disc_track import *
 import apppath
 
 sys.path.append(os.path.join(dirname,"..","..","utils"))
 import inireader
 
 
-class MakeMKV:
+class MakeMKVDisc:
     newlinechar = '\n'
     colpattern = re.compile(r'''((?:[^,"']|"[^"]*"|'[^']*')+)''')
-    server_settings = inireader.loadFile(os.path.join(dirname,'makemkv.ini'),convertNativeTypes=False)
-    attributeids = server_settings['attibute_ids']
+    
+    server_settings = inireader.loadFile(os.path.join(os.path.dirname(__file__),'makemkv.ini'),convertNativeTypes=False)
+    attributeids = server_settings['attribute_ids']
 
     def __init__(self,deviceID):
-        if MakeMKV._hasMakeMkvKeyExpired():
+        if MakeMKVDisc._hasMakeMkvKeyExpired():
             raise Exception('MakeMKV license key has expired. Manually run makemkv to update the key. (AppPath:' + apppath.makemkvcon() +')')
     
         #TODO replace is a workaround til I figure out naming scheme for devices
         deviceID = deviceID.replace('/dev/disk','/dev/rdisk')
     
         self.deviceID = deviceID
-        self.discInfoRaw = MakeMKV._discInfoRawFromDevice(deviceID)
+        self.discInfoRaw = MakeMKVDisc._discInfoRawFromDevice(deviceID)
         
-        self.mediaDiscTracks = MakeMKV._discTracksFromDictionary( MakeMKV._deserializeDiscInfo(self.discInfoRaw) )
+        self.mediaDiscTracks = MakeMKVDisc._discTracksFromDictionary( MakeMKVDisc._deserializeDiscInfo(self.discInfoRaw) )
         
-        driveInfo = MakeMKV._driveInfoRawFromDevice(deviceID)
+        driveInfo = MakeMKVDisc._driveInfoRawFromDevice(deviceID)
 
-        self.driveNumber = MakeMKV._driveNumber(driveInfo,deviceID)
+        self.driveNumber = MakeMKVDisc._driveNumber(driveInfo,deviceID)
         
-        logging.debug('MakeMKV initialized with deviceID' + str(deviceID))
+        logging.debug('MakeMKVDisc initialized with deviceID' + str(deviceID))
         
     def __repr__(self):
-        return "<MakeMKV>"
-    
-    def discTracks(self):
+        return "<MakeMKVDisc " +self.deviceID+ " >"
+        
+    def hasLocatedMediaTracks(self):
+        return True
+
+    def tracks(self):
         return self.mediaDiscTracks
 
-    def ripDiscTracks(self,tracks,pathSave):
+    def ripTracks(self,tracks,pathSave):
         didRip = True
         
         if not os.path.isdir(pathSave):
@@ -64,43 +68,65 @@ class MakeMKV:
 
                 if os.path.exists(outputFile):
                     os.remove(outputFile)
+                    
+                ripType = 'disc'
 
                 logging.info('Started ripping track: ' + str(track))
-                cmdargs = [apppath.makemkvcon(),'-r','--noscan','mkv','disc:' + str(self.driveNumber),str(track.trackNumber),pathSave]
+                cmdargs = [apppath.makemkvcon(),'-r','--noscan','mkv',ripType + ':' + str(self.driveNumber),str(track.trackNumber),pathSave]
                 logging.debug('Running command: ' + ' '.join(cmdargs))
                 exitCode = subprocess.call(cmdargs)
                 
                 if exitCode is not 0:
                     didRip = False
-                
-                nfoFile = track.outputFileName.replace('.mkv','.nfo')
-                
-                with open(os.path.join(pathSave,nfoFile), 'w') as outfile:
-                    json.dump(track.serialize(), outfile)
 
             except subprocess.CalledProcessError as e:
                 logging.error( 'Failed to save track ' + str(track) + ', reason: **' + str(e.output) + '**' )
                 didRip = False
         
-        return didRip
+        rippedTracks = []
+        
+        if didRip:
+            for fileName in os.listdir(pathSave):
+                if fileName.lower().endswith('.mkv'):
+                    filePath = os.path.join(pathSave,fileName)
+                    track = LocalTrackMkv(filePath)
+                    rippedTracks.append(track)
 
+        return rippedTracks
 
-    def ripDiscBackup(self,pathSave):
-        didRip = False
-    
+    def ripAllTracks(self,pathSave):
+        didRip = True
+        
         if not os.path.isdir(pathSave):
             os.makedirs(pathSave)
             
         try:
-            exitCode = subprocess.call([apppath.makemkvcon(),'-r','--noscan','--decrypt','disc:' + str(self.driveNumber),pathSave])
             
-            if exitCode == 0:
-                didRip = True
+            ripType = 'dev'
+
+            logging.info('Started ripping all tracks to: ' + str(pathSave))
+            cmdargs = [apppath.makemkvcon(),'-r','--noscan','mkv',ripType + ':' + str(self.filePath),'all',pathSave]
+            logging.debug('Running command: ' + ' '.join(cmdargs))
+            exitCode = subprocess.call(cmdargs)
+                
+            if exitCode is not 0:
+                didRip = False
 
         except subprocess.CalledProcessError as e:
             logging.error( 'Failed to save track ' + str(track) + ', reason: **' + str(e.output) + '**' )
-            sys.exit(1)
-            
+            didRip = False
+        
+        rippedTracks = []
+        
+        if didRip:
+            for fileName in os.listdir(pathSave):
+                if fileName.lower().endswith('.mkv'):
+                    filePath = os.path.join(pathSave,fileName)
+                    track = DiscTrack.LocalTrackMkv(filePath)
+                    rippedTracks.append(track)
+        
+        return rippedTracks
+
     def __repr__(self):
         return "<MakeMKV device:" + self.deviceID +">"
         
@@ -158,7 +184,7 @@ class MakeMKV:
         
     @staticmethod
     def _driveNumber(deviceInfo,deviceName):
-        for line in deviceInfo.split(MakeMKV.newlinechar):
+        for line in deviceInfo.split(MakeMKVDisc.newlinechar):
             line = line.strip().replace('"','')
             if line.startswith('DRV:') and line.endswith(deviceName):
                 return int( line.split(',')[0].split(':')[1] )
@@ -175,14 +201,14 @@ class MakeMKV:
 
         track_id = -1
 
-        for line in discInfoRaw.split(MakeMKV.newlinechar):
-            split_line = MakeMKV.colpattern.split(line)[1::2]
+        for line in discInfoRaw.split(MakeMKVDisc.newlinechar):
+            split_line = MakeMKVDisc.colpattern.split(line)[1::2]
             if len(split_line) > 1 and split_line[0] != 'TCOUNT':
                 
                 #<  Disc Info
                 if line.startswith('CINFO'):
                     try:
-                        info_out['disc'][MakeMKV.attributeids[split_line[0].split(':')[-1]]] = split_line[-1].replace('"','')
+                        info_out['disc'][MakeMKVDisc.attributeids[split_line[0].split(':')[-1]]] = split_line[-1].replace('"','')
                     except KeyError:
                         info_out['disc'][split_line[0].split(':')[-1]] = split_line[-1].replace('"','')
 
@@ -195,7 +221,7 @@ class MakeMKV:
                         track_info = info_out['tracks'][track_id] = {'cnts':{'Subtitles':0,'Video':0,'Audio':0}}
 
                     try:
-                        track_info[MakeMKV.attributeids[split_line[1]]] = split_line[-1].replace('"','')
+                        track_info[MakeMKVDisc.attributeids[split_line[1]]] = split_line[-1].replace('"','')
                     except KeyError:
                         track_info[split_line[1]] = split_line[-1].replace('"','')
 
@@ -214,7 +240,7 @@ class MakeMKV:
                         track_info = info_out['tracks'][track_id]['track_parts'][track_part_id] = {}
 
                     try:
-                        track_info[MakeMKV.attributeids[split_line[1]]] = split_line[-1].replace('"','')
+                        track_info[MakeMKVDisc.attributeids[split_line[1]]] = split_line[-1].replace('"','')
                     except KeyError:
                         track_info[split_line[1]] = split_line[-1].replace('"','')
 

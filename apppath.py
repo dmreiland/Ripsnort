@@ -9,7 +9,7 @@ import subprocess
 
 
 def pathTemporary(subFolder=None):
-    tempDir = tempfile.gettempdir()
+    tempDir = os.path.join(tempfile.gettempdir(),'ripsnort')
     
     if subFolder is not None:
         tempDir = os.path.join(tempDir,subFolder)
@@ -30,6 +30,23 @@ def pathForBinary(binApp):
         path = None
     
     return path
+
+def pathForApp(appName):
+    if appName.lower().endswith('.app') != None:
+        appName = appName + '.app'
+        
+    path = None
+
+    platformName = platform.system().lower().strip()
+
+    if platformName == 'darwin':
+        path = os.path.join('/','Applications',appName)
+
+        if not os.path.exists(path):
+            path = None
+
+    return path
+    
 
 
 def mkvinfo():
@@ -95,6 +112,19 @@ def makemkvcon():
 def vobsub2srt():
     path = pathForBinary('vobsub2srt')
     return path
+
+def BDSup2Sub():
+    returnPath = None
+
+    pathBinary = pathForBinary('BDSup2Sub')
+    pathApp = pathForApp('BDSup2Sub')
+    
+    if pathBinary:
+        returnPath = pathBinary
+    elif pathApp:
+        returnPath = os.path.join(pathApp,'Contents','MacOS','JavaApplicationStub')
+    
+    return returnPath
 
 
 def checkDependancies():

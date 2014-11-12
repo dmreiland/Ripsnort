@@ -44,7 +44,7 @@ class LocalNotify:
         message = "Tracks: \n"
 
         for track in tracks:
-            message += "  " + track.outputFileName + ", " + str(track.chapters) + ", " + str(track.durationS/60) + "minutes\n"
+            message += "  " + track.filepath + ", " + str(track.chapters) + ", " + str(track.durationS/60) + "minutes\n"
         
         self._notify(title,subtitle,message)
 

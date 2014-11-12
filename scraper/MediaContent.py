@@ -22,10 +22,16 @@ class MediaContent(object):
         self.popularity = 0
 
     def longestDuration(self):
-        return max(self.durationS)
+        if len(self.durationS) > 0:
+            return max(self.durationS)
+        else:
+            return 0
 
     def shortestDuration(self):
-        return min(self.durationS)
+        if len(self.durationS) > 0:
+            return min(self.durationS)
+        else:
+            return 0
         
     def hasDurationBetweenMaxMin(self,maxDurationS,minDurationS):
         isMatch = False

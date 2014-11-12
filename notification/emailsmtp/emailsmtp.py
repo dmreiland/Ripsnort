@@ -84,7 +84,7 @@ class EmailSMTP:
                     if mediaObjCmp == mediaObj:
                         track = key
 
-                message += "  <strong>" + str(track.outputFileName) + "</strong>, " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes<br>\n"
+                message += "  <strong>" + str(track.filepath) + "</strong>, " + str(track.chapters) + "chapters, " + str(track.durationS/60) + "minutes<br>\n"
 
                 if mediaObj is None:
                     message += "  <strong> Failed to find a match for this video file </strong>"
