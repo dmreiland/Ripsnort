@@ -15,13 +15,12 @@ Using MakeMKV to rip discs it then uses OpenSubtitles to find a matching compari
 
 Setup
 --------------
-Install MakeMkv: http://makemkv.com/
+Install MakeMkv: http://makemkv.com/</br>
+Install MkvToolnix: https://www.bunkus.org/videotools/mkvtoolnix/</br>
+Install VobSub2SRT: https://github.com/ruediger/VobSub2SRT</br>
+Install BDSup2Sub: http://www.videohelp.com/tools/BDSup2Sub (blu-ray support only)
 
-Install MkvToolnix: https://www.bunkus.org/videotools/mkvtoolnix/
-
-Install VobSub2SRT: https://github.com/ruediger/VobSub2SRT
-
-Edit settings.ini and change the following values to match your email account and movie/tv save folder
+Edit config.ini and change the following values to match your email account and movie/tv save folder
 ```
     smtp_source_email = myemailaddr@gmail.com
     smtp_destination_email = myemailaddr@gmail.com
@@ -46,32 +45,52 @@ Autorun
 Go to 'System Preferences'->'CDs & DVDs'->'When you insert a Video DVD' and select mac_autorun.scpt
 
 
-Manual execution
+Manual Disc Ripping
 --------------
 
-Example use, call autorip with the disc inserted in device /dev/disk2
+Ripping disc example use, call ripsnort with the disc inserted in device /dev/disk2
 ```
-    ./autorip.py /dev/disk2
+    ./ripsnort.py /dev/disk2
 ```
 once completed, you will receive an email
 
+Manual Track Identification
+--------------
+
+Ripsnort can also be used to identify MKV tracks. Simply call with the file path i.e.
+```
+    ./ripsnort.py -i /Users/Ryan/TV/Numb3Rs - Season 6 Disc 2/title00.mkv
+```
+
+and ripsnort will proceed to compare this tracks subtitles with candidates found online. On success you will see output as such:
+```
+ContentMatch Show: Numb3rs
+ContentMatch Season: 6
+ContentMatch EpisodeNumber: 6
+ContentMatch EpisodeName: Dreamland
+ContentMatch Year: 2009
+2014-11-21 21:29:34,051 Ripsnort complete -------
+```
+if you would like ripsnort to rename and move the track according to your config.ini replace ```-i``` with ```-r```
 
 Tools used
 --------------
- - MakeMKV
- - IMDbPY
- - OpenSubtitles.org
- - Discident.com
- - VobSub2SRT
- - Tesseract
-
+[MakeMKV](http://www.makemkv.com)
+[IMDbPY](http://imdbpy.sourceforge.net)
+[OpenSubtitles.org](http://www.opensubtitles.org)
+[Discident.com](http://discident.com)
+[VobSub2SRT](https://github.com/ruediger/VobSub2SRT)
+[Tesseract](https://code.google.com/p/tesseract-ocr/)
+[BD2Sup2Sub](http://www.videohelp.com/tools/BDSup2Sub)
 
 Donations
 --------------
-This project is dependant on the OpenSubtitles.org website. Please consider becoming a VIP member
+This project is dependant on the OpenSubtitles.org website. If this project has been useful to you please consider contributing
 
 
 License
 ----
 
 [BSD 3-Clause](http://www.opensource.org/licenses/BSD-3-Clause)
+
+

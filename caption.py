@@ -8,6 +8,7 @@ import sys
 import difflib
 import logging
 import subprocess
+import hashlib
 
 
 import apppath
@@ -16,6 +17,7 @@ dirname = os.path.dirname(os.path.realpath( __file__ ))
 
 sys.path.append( os.path.join(dirname,"utils") )
 import string_match
+import objectcache
 
 
 COMPARE_MATCH_MIN_RATIO = 0.90
@@ -44,6 +46,7 @@ LANG_CODES ={ "en": "eng",
             "nl":"dut",
             "eo":"epo",
             "et":"est",
+            "el":"gre",
             "fi":"fin",
             "gl":"glg",
             "ka":"geo",
@@ -78,7 +81,6 @@ LANG_CODES ={ "en": "eng",
 def convert2to3CharCode(lang):
     retLan = LANG_CODES[lang]
     return retLan
-
 
 def convert3to2CharCode(lang):
     retLan = None
@@ -200,6 +202,26 @@ def convertSubIdxToSrt(vobsubData,idxData,language='en'):
 
     return srtData
 
+def extractTextFromSRTData(srtText):
+    splits = [s.strip() for s in re.split(r'\n\s*\n', srtText) if s.strip()]
+    regex = re.compile(r'''(?P<index>\d+).*?(?P<start>\d{2}:\d{2}:\d{2},\d{3}) --> (?P<end>\d{2}:\d{2}:\d{2},\d{3})\s*.*?\s*(?P<text>.*)''', re.DOTALL)
+
+    textReturn = ''
+
+    try:
+        for s in splits:
+            r = regex.search(s)
+
+            if r is not None:
+                text = r.groups()[3]
+                #Remove any '<>' from text i.e. italics
+                text = re.sub(r'<[^>]*>','',text)
+                textReturn += text + '\n'
+    except Exception as e:
+        logging.error('Failed to extract srt:\n' + str(e))
+
+    return textReturn
+
 
 class Caption:
     def __init__(self,text,language):
@@ -214,7 +236,7 @@ class Caption:
         elif len(language) == 3:
             self.languageCode2 = convert3to2CharCode(language)
             self.languageCode3 = language
-
+            
         self.language = self.languageCode3
 
         self.textCompare = Caption._textForComparison(self.text)
@@ -223,7 +245,7 @@ class Caption:
         if text is not None and len(text) > 200:
             textPrint = text[0:200]
 
-        logging.debug('Caption initialized with lang:' + language + ' text:\n' + str(textPrint))
+        logging.debug('Caption initialized with lang:' + str(self.language) + ' text:\n' + str(textPrint))
     
     def matchRatioWithCaption(self,caption,quickMatch=False):
         
@@ -244,8 +266,37 @@ class Caption:
 
             assert(len(textA)>0)
             assert(len(textB)>0)
-        
-            matchRatio = string_match.matchRatio(self.textCompare,caption.textCompare)
+            
+            matchRatio = difflib.SequenceMatcher(None,textA,textB).ratio()
+                
+            if (matchRatio > 0.02) and (matchRatio < 0.92):
+                #construct 2 keys with the hashes of each string in each order. Check the cache before performing a match operation
+                hashA = hashlib.md5()
+                hashA.update(textA)
+
+                hashB = hashlib.md5()                
+                hashB.update(textB)
+                
+                keyA = str(hashA.hexdigest()) + '_' + str(hashB.hexdigest())
+                keyB = str(hashB.hexdigest()) + '_' + str(hashA.hexdigest())
+                
+                resultA = objectcache.searchCache('Caption_Compare',keyA)
+                resultB = objectcache.searchCache('Caption_Compare',keyB)
+                
+                if resultA != None:
+                    logging.debug('Found cached result(a): ' + str(resultA))
+                    matchRatio = resultA
+
+                elif resultB != None:
+                    matchRatio = resultB
+                    logging.debug('Found cached result(b): ' + str(resultB))
+
+                elif quickMatch == False:
+                    logging.info('Performing match compare. Please wait')
+                    matchRatio = string_match.matchRatio(self.textCompare,caption.textCompare)
+                    logging.debug('Got compare result: ' + str(matchRatio))
+                    objectcache.saveObject('Caption_Compare',keyA,matchRatio)
+
         except:
             pass
 
@@ -325,10 +376,12 @@ class Caption:
     def __repr__(self):
         textPrint = ''
         if self.text is not None:
-            if len(self.text) > 50:
-                textPrint = self.text[0:50]
+            if len(self.text) > 200:
+                textPrint = self.text[0:200]
             else:
                 textPrint = self.text
+                
+            textPrint = textPrint.replace('\n','')
 
         return '<Caption lan:' +str(self.language)+ ' data source:' +str(self.data_source)+ ' uniqueid:' +str(self.data_unique_id)+ ' \'' +textPrint+ '\'>'
     
@@ -415,17 +468,18 @@ class Caption:
 class SRTCaption(Caption):
     def __init__(self,srtRaw,language):
         assert(len(srtRaw)>0)
+        assert(language)
 
-        srtText = SRTCaption._extractTextFromSRT(srtRaw)
+        srtText = extractTextFromSRTData(srtRaw)
         assert(len(srtText)>0)
-        
+       
         Caption.__init__(self,srtText,language)
         assert(len(self.language)>0)
-        assert(len(self.text)>0)
+        assert(self.text==srtText)
 
         self.srt = srtRaw
-        
-        
+
+
     def __repr__(self):
         textPrint = ''
         if self.text is not None:
@@ -433,35 +487,17 @@ class SRTCaption(Caption):
                 textPrint = self.text[0:200]
             else:
                 textPrint = self.text
+                
+            textPrint = textPrint.replace('\n','')
 
         return '<SRTCaption lan:' +str(self.language)+ ' data source:' +str(self.data_source)+ ' uniqueid:' +str(self.data_unique_id)+ ' \'' +textPrint+ '\'>'
-
-    @staticmethod
-    def _extractTextFromSRT(srtText):
-        splits = [s.strip() for s in re.split(r'\n\s*\n', srtText) if s.strip()]
-        regex = re.compile(r'''(?P<index>\d+).*?(?P<start>\d{2}:\d{2}:\d{2},\d{3}) --> (?P<end>\d{2}:\d{2}:\d{2},\d{3})\s*.*?\s*(?P<text>.*)''', re.DOTALL)
-
-        textReturn = ''
-
-        try:
-            for s in splits:
-                r = regex.search(s)
-                
-                if r is not None:
-                    text = r.groups()[3]
-                    #Remove any '<>' from text i.e. italics
-                    text = re.sub(r'<[^>]*>','',text)
-                    textReturn += text + '\n'
-        except Exception as e:
-            logging.error('Failed to extract srt:\n' + str(e))
-
-        return textReturn
 
 
 class VobSubCaption(Caption):
     def __init__(self,subRaw,idxRaw,lan):
         assert(len(subRaw)>0)
         assert(len(idxRaw)>0)
+        assert(lan)
         
         langCode = None
         
@@ -470,9 +506,8 @@ class VobSubCaption(Caption):
         elif len(lan) == 3:
             langCode = convert3to2CharCode(lan)
         
-        srtText = convertSubIdxToSrt(subRaw,idxRaw,langCode)
-        
-        logging.debug('Initialzing with text ' + str(len(srtText)) + ', ' + srtText[0:100])
+        srtData = convertSubIdxToSrt(subRaw,idxRaw,langCode)
+        srtText = extractTextFromSRTData(srtData)
 
         Caption.__init__(self,srtText,langCode)
         
@@ -482,10 +517,12 @@ class VobSubCaption(Caption):
     def __repr__(self):
         textPrint = ''
         if self.text is not None:
-            if len(self.text) > 50:
-                textPrint = self.text[0:50]
+            if len(self.text) > 200:
+                textPrint = self.text[0:200]
             else:
                 textPrint = self.text
+                
+            textPrint = textPrint.replace('\n','')
 
         return '<VobSubCaption lan:' +str(self.language)+ ' data source:' +str(self.data_source)+ ' uniqueid:' +str(self.data_unique_id)+ ' \'' +textPrint+ '\'>'
 
@@ -500,10 +537,11 @@ class PGSCaption(Caption):
         
         srtData = convertSubIdxToSrt(subData,idxData)
         assert(len(srtData)>0)
+
+        srtText = extractTextFromSRTData(srtData)
+        assert(len(srtText)>0)
         
-        srtObj = SRTCaption(srtData,lan)
-        
-        Caption.__init__(self,srtObj.text,lan)
+        Caption.__init__(self,srtText,lan)
 
         self.pgs = pgsRaw
         
@@ -514,6 +552,8 @@ class PGSCaption(Caption):
                 textPrint = self.text[0:200]
             else:
                 textPrint = self.text
+                
+            textPrint = textPrint.replace('\n','')
 
         return '<VobSubCaption lan:' +str(self.language)+ ' data source:' +str(self.data_source)+ ' uniqueid:' +str(self.data_unique_id)+ ' \'' +textPrint+ '\'>'
 

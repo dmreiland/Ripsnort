@@ -6,10 +6,13 @@ import os
 import sys
 import shelve
 import tempfile
+import logging
 
+def _cacheStorageDir():
+    return os.path.join(tempfile.gettempdir(),'ripsnort','cache')
 
 def _openShelveDbForCaller(caller):
-    tempDir = os.path.join(tempfile.gettempdir(),'ripsnort','cache')
+    tempDir = _cacheStorageDir()
     tempFile = os.path.join(tempDir,caller)
     
     if os.path.exists(tempDir) == False:
@@ -40,6 +43,27 @@ def searchCache(caller,key):
         retObject = s[key]
     except:
         pass
+    
+    logging.debug('Cache search ' + key + ' (' +str(caller)+ ') results: ' + str(retObject))
 
     return retObject
+
+def clearCache(caller):
+    filePath = os.path.join(_cacheStorageDir(),caller)
+    
+    if os.path.exists(filePath):
+        logging.info('Clearing cache: ' + filePath)
+        os.remove(filePath)
+
+def availableCaches():
+    cacheList = []
+    
+    for fileName in os.listdir(_cacheStorageDir()):
+        cacheList.append(fileName)
+        
+    return cacheList
+
+def clearAllCaches():
+    for cacheName in availableCaches():
+        clearCache(cacheName)
 

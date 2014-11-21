@@ -264,6 +264,7 @@ class LocalTrackMkv(VideoTrack):
                 
                 if currentSubtitleIndex == subIndex:
                     lang = self.subtitleLanguageAtIndex(currentSubtitleIndex)
+                    assert(lang)
                     
                     if codec.lower() == 's_vobsub':
                         logging.debug('Loading vobsub data for tracknum ' + str(tracknum) + ' language ' + str(lang))

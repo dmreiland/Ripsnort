@@ -48,8 +48,7 @@ def matchRatio(textA,textB,quickMatch=False):
     logging.debug('Quick match ratio:' + str(quickRatio))
         
     '''Check ratio is sufficient to do a full scan. Dont do a full scan if difflib is telling us its 92% match ratio'''
-    #if (quickRatio > 0.02) and (quickRatio < 0.92) and (not quickMatch):
-    if True:
+    if (quickRatio > 0.02) and (quickRatio < 0.92) and (not quickMatch):
         distance = distanceBetweenStrings(textA,textB)
         curMatchRatio = float((len(textA)-distance))/float(len(textA))
         return curMatchRatio

@@ -50,6 +50,8 @@ LANG_CODES ={ "en": "eng",
             "nl":"dut",
             "eo":"epo",
             "et":"est",
+            "el":"gre",
+            "el":"grc",
             "fi":"fin",
             "gl":"glg",
             "ka":"geo",
@@ -258,11 +260,14 @@ class OpenSubtitles:
         if os.path.exists(extractPath):
             shutil.rmtree(extractPath)
             
+        os.makedirs(extractPath)
+            
         try:
             zip = zipfile.ZipFile(fTmp)
             zip.extractall(extractPath)
         except Exception as e:
             logging.error('Failed to extract zip: ' + str(e))
+            return None
 
         for name in os.listdir(extractPath):
             extension = name.split('.')[-1]
@@ -282,7 +287,8 @@ class OpenSubtitles:
                 
                 try:
                     captionObj = caption.SRTCaption(srtData,language)
-                except:
+                except Exception as e:
+                    logging.error('Failed to extract srt from file ' + extractedFile + ', ' + downloadLink + ', ' + str(e)) 
                     pass
 
                 os.remove(extractedFile)
@@ -362,8 +368,10 @@ def test():
     
     subsEp1 = s.subtitlesForMovie(tvObjEp1)
     
-    assert subsEp1[0].matchRatioWithCaption(subsEp1[1]) >= 0.90
-    assert subsEp1[0] == subsEp1[1]
+    assert(len(subsEp1)>=1)
+    
+    assert subsEp1[0].matchRatioWithCaption(subsEp1[0]) >= 0.90
+    assert subsEp1[0] == subsEp1[0]
     
     s = OpenSubtitles()
 
@@ -372,12 +380,10 @@ def test():
     
     subsEp2 = s.subtitlesForMovie(tvObjEp2)
     
-    assert subsEp2[0].matchRatioWithCaption(subsEp2[1]) >= 0.90
-    assert subsEp2[0] == subsEp2[1]
+    assert subsEp2[0].matchRatioWithCaption(subsEp2[0]) >= 0.90
+    assert subsEp2[0] == subsEp2[0]
 
     assert subsEp1[0] != subsEp2[0]
-    assert subsEp1[1] != subsEp2[1]
-    assert subsEp1[1] != subsEp2[0]
 
     tvObjTest3 = TVEpisodeMedia()
     tvObjTest3.unique_id = '0502251'
@@ -390,12 +396,11 @@ def test():
     
     movieSubs = s.subtitlesForMovie(movieObj)
     
-    assert movieSubs[0] == movieSubs[1]
+    assert movieSubs[0] == movieSubs[0]
     
-    assert movieSubs[0].matchRatioWithCaption(movieSubs[1]) >= 0.90
+    assert movieSubs[0].matchRatioWithCaption(movieSubs[0]) >= 0.90
     
     assert movieSubs[0] != subsEp1[0]
-    assert movieSubs[0] != subsEp1[1]
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

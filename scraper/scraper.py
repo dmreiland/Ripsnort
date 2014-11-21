@@ -132,7 +132,7 @@ class MediaScraper:
         
         results = objectcache.searchCache('MediaScraper_TVEpisode',searchKey)
         
-        if results == None:
+        if results == None or len(results) == 0:
             results = self.api.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
             objectcache.saveObject('MediaScraper_TVEpisode',searchKey,results)
         
@@ -142,11 +142,11 @@ class MediaScraper:
 
         searchKey = mediaObject.title + '_S' + str(seasonNumber)
         
-        results = objectcache.searchCache('MediaScraper_Season',searchKey)
+        results = objectcache.searchCache('MediaScraper_TVSeason',searchKey)
         
-        if results == None:
+        if results == None or len(results) == 0:
             results = self.api.findTVEpisodesForSeason(mediaObject,seasonNumber)
-            objectcache.saveObject('MediaScraper_Season',searchKey,results)
+            objectcache.saveObject('MediaScraper_TVSeason',searchKey,results)
         
         if results:
             results.sort(key=lambda x: float(x.episode_number))
@@ -157,9 +157,9 @@ class MediaScraper:
 
         searchKey = mediaObject.unique_id
         
-        results = objectcache.searchCache('MediaScraper_Show',searchKey)
+        results = objectcache.searchCache('MediaScraper_TVShow',searchKey)
         
-        if results == None:
+        if results == None or len(results) == 0:
             results=[]
             seasonNumber=1
             keepSearching=True
@@ -181,7 +181,7 @@ class MediaScraper:
                 time.sleep(5)
 
             if len(results) > 0:
-                objectcache.saveObject('MediaScraper_Show',searchKey,results)
+                objectcache.saveObject('MediaScraper_TVShow',searchKey,results)
         
         if results:
             results.sort(key=lambda x: float((x.season_number*999) + x.episode_number))
@@ -419,7 +419,7 @@ class SubtitleScraper:
 
         results = objectcache.searchCache('SubtitleScraper_Movie',key)
 
-        if results == None:
+        if results == None or len(results) == 0:
             results = self._api().subtitlesForMovie(movieObject,3,language)
             objectcache.saveObject('MediaScraper_Movie',key,results)
 
@@ -435,7 +435,7 @@ class SubtitleScraper:
         
         results = objectcache.searchCache('SubtitleScraper_TVEpisode',key)
         
-        if results == None:
+        if results == None or len(results) == 0:
             results = self._api().subtitlesForMovie(episodeObject,5,language)
             objectcache.saveObject('SubtitleScraper_TVEpisode',key,results)
 
@@ -443,6 +443,8 @@ class SubtitleScraper:
         
     def subtitlesForMediaContent(self,mediaObject,language='eng'):
         subs = []
+        
+        logging.debug('Looking for subtitles language(' + str(language) + ')  for media object: ' + str(mediaObject))
 
         if mediaObject.content_type == 'movie':
             subs = self.subtitlesForMovie(mediaObject,language)
@@ -455,7 +457,9 @@ class SubtitleScraper:
 
         else:
             logging.error('Unable content type for object: ' + str(mediaObject))
-            
+        
+        logging.debug('Returning subtitles language(' + str(language) + ') subtitles: ' + str(subs))
+        
         return subs
     
     def _api(self):

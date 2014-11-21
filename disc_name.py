@@ -26,6 +26,9 @@ class DiscName:
         self.title = title
         self.season = season
         self.discNumber = disc
+        
+        if self.discNumber == None:
+           self.discNumber = 1 
 
         self.formattedName = self.title
         
@@ -35,11 +38,27 @@ class DiscName:
         if self.discNumber is not None:
             self.formattedName = self.formattedName + ' - DiscNumber ' + str(self.discNumber)
             
-        logging.info('DiscName intialized with ' + str(self.title) + ' season ' + str(self.season) + ' discnum ' + str(self.discNumber))
+        logging.info('DiscName converted ' + str(self.originalDiscName) + ' to ' + str(self.title) + ' season ' + str(self.season) + ' discnum ' + str(self.discNumber))
 
     @staticmethod
     def _removeUnnecessaryCharsFromTitle(title):
         tmpName = title
+        
+        #Given file path
+        if '/' in tmpName  or '\\' in tmpName:
+            #replace directory seperators with spaces
+            tmpName = tmpName.replace('/',' ')
+            tmpName = tmpName.replace('\\',' ')
+
+            #remove makemkv file names e.g. title01.mkv
+            tmpName = re.sub(r'title\d{1,2}\.mkv','',tmpName)
+
+            #remove the movies filepath
+            tmpName = re.sub(r'(?i)\ movies\ ',' ',tmpName)
+
+            #Remove the home path from the title
+            homePathSpaceSeperatored = os.path.expanduser('~').replace('/',' ').replace('\\',' ').strip()
+            tmpName = tmpName.replace(homePathSpaceSeperatored,' ')
         
         tmpName = re.sub('(?i)\.iso$', '', tmpName)
 
@@ -161,7 +180,9 @@ class DiscName:
                     didRegexMatch = True
                     
                     
-        tmpName = tmpName.replace('[]','').replace('()','').replace('{}','').replace('--',' ').strip()
+        #replace any erronous chars with space & remove double spaces
+        tmpName = tmpName.replace('[]',' ').replace('()',' ').replace('{}',' ').replace('--',' ').replace('_',' ').strip()
+        tmpName = re.sub('\s{2,}', ' ', tmpName)
 
         if tmpName[-1] == '-' or tmpName[-1] == '.' or tmpName[-1] == '_' or tmpName[-1] == '\\' or tmpName[-1] == '{' or tmpName[-1] == '}':
             tmpName = tmpName[0:-1]
@@ -198,7 +219,8 @@ class DiscName:
                 tmpName = re.sub(regTest,'',tmpName)
                 didRegexMatch = True
                 
-        regexDiskOnly = [r'(?i)(?:d|disc|disk)[-|_| ]?([\b\d{1,2}]\b)']
+        regexDiskOnly = [r'(?i)(?:d|disc|disk)[-|_| ]?([\b\d{1,2}]\b)',
+                         r'(?i)(?:d|disc|disk)(\d{1,2})[-|_| ]?(?:[t|T]\d{1,2})']
 
         for regTest in regexDiskOnly:
             regexSearch = re.search(regTest,tmpName)
