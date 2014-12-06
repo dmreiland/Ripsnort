@@ -340,7 +340,10 @@ class OpenSubtitles:
             if len(sortedList) >= 2:
                 captIntA = float( sortedList[0].textSignature() )
                 captIntB = float( sortedList[1].textSignature() )
-                delta = abs(captIntB/captIntA) % 1.0
+                delta = 0.0
+                
+                if captIntA > 0:
+                    delta = abs(captIntB/captIntA) % 1.0
                 
                 if delta > 0.1:
                     sortedList.remove(sortedList[0])
@@ -349,7 +352,10 @@ class OpenSubtitles:
             if len(sortedList) >= 2:
                 captIntA = float( sortedList[-1].textSignature() )
                 captIntB = float( sortedList[-2].textSignature() )
-                delta = abs(captIntB/captIntA) % 1.0
+                delta = 0.0
+                
+                if captIntA > 0:
+                    delta = abs(captIntB/captIntA) % 1.0
                 
                 if delta > 0.1:
                     del sortedList[-1]

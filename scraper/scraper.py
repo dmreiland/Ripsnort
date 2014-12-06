@@ -81,6 +81,11 @@ class MediaScraper:
             if len(acronyms) == 1:
                 results = self.api.findMovie(acronyms[0],year)
 
+        if results:
+            '''sort by most popular'''
+            results.sort(key=lambda x: float(x.popularity))
+            results.reverse()
+
         logging.debug('Returning Movies: ' + str(results))
         
         return results
@@ -121,7 +126,12 @@ class MediaScraper:
 
             if len(acronyms) == 1:
                 results = self.api.findTVShow(acronyms[0],seasonNumber,year)
-        
+
+        if results:
+            '''sort by most popular'''
+            results.sort(key=lambda x: float(x.popularity))
+            results.reverse()
+
         logging.debug('Returning TV shows: ' + str(results))
         
         return results
@@ -135,7 +145,7 @@ class MediaScraper:
         if results == None or len(results) == 0:
             results = self.api.findTVEpisode(mediaObject,seasonNumber,episodeNumber)
             objectcache.saveObject('MediaScraper_TVEpisode',searchKey,results)
-        
+
         return results
 
     def findTVEpisodesForSeason(self,mediaObject,seasonNumber):

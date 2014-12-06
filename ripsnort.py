@@ -201,61 +201,38 @@ def outputFileForTrackWithFormat(mediaObj,fileformat):
     return newFilePath
 
 
-def allMediaCandidatesForDiscName(discname,contentType):
-    candidateList = scraper.MediaScraper().findContent(discname.title,contentType)
+def allMediaCandidatesForDiscName(discname):
+    candidateListMovie = scraper.MediaScraper().findContent(discname.title,'movie')
+    candidateListTVShow = scraper.MediaScraper().findContent(discname.title,'tvshow')
+    candidateListTVEpisodes = []
 
-    '''sort by least popular and then reverse'''
-    candidateList.sort(key=lambda x: float(x.popularity))
-    candidateList.reverse()
-
-    newCandidateList = []
-    
-    for candidate in candidateList:
-        if candidate is None:
-            continue
-        
-        mediaObjsCompare = [candidate]
-        
-        if candidate.content_type == 'tvshow':
-            mediaObjsCompare = []
-            for mediaObj in candidateList:
-                seasonNumber = discname.season
-                logging.debug('Searching for episodes from season ' + str(seasonNumber) + ' show:' + str(mediaObj))
-                
-                if seasonNumber is not None:
-                    logging.info('Fetching all episodes for TV show: ' + str(mediaObj.title) + ', this may take some time')
-                    tvMediaObjs = scraper.MediaScraper().findTVEpisodesForSeason(mediaObj,seasonNumber)
-                else:
-                    tvMediaObjs = scraper.MediaScraper().findTVEpisodesForShow(mediaObj)
-                
-                logging.debug('Adding TV Media candidates: ' + str(tvMediaObjs))
-                mediaObjsCompare += tvMediaObjs
-                import time
-                time.sleep(1)
-            
-            if len(mediaObjsCompare) == 0:
-                continue
-
-            '''If the average dvd contains 9000 seconds of content then if we know the disc number we should be able to estimate
-               the best place to start searching for episodes by multiplying the averageDurationDiscS by the number of discs'''
-            averageDurationDiscS = 9000 - 1000 #subtract 1000 so we undershoot rather than overshoot over target start point
-            durationOffset = discname.discNumber * averageDurationDiscS
-            episodeLength = mediaObjsCompare[0].shortestDuration()
-            if episodeLength > 0:
-                episodeIndexOffset = durationOffset / episodeLength
-                mediaObjsCompare = mediaObjsCompare[episodeIndexOffset:len(mediaObjsCompare)] + mediaObjsCompare[0:episodeIndexOffset]
-                logging.debug('Set start offset to search: ' + str(episodeIndexOffset))
-
-        #Only add new content
-        for newMediaObject in mediaObjsCompare:
-            matches = [x for x in newCandidateList if x.__hash__() == newMediaObject.__hash__()]
-            if len(matches) == 0:
-                newCandidateList.append(newMediaObject)
+    '''Remove duplicates'''
+    candidateListMovie=list(set(candidateListMovie))
+    candidateListTVShow=list(set(candidateListTVShow))
 
     #sort candidates by the titles proximity to the disc name
-    candidateList.sort(key=lambda x: string_match.distanceBetweenStrings(x.title,discname.title))
+    candidateListMovie.sort(key=lambda x: string_match.distanceBetweenStrings(x.title,discname.title))
+    candidateListTVShow.sort(key=lambda x: string_match.distanceBetweenStrings(x.title,discname.title))
 
-    return newCandidateList
+    for candidateShow in candidateListTVShow:
+        if candidateShow is None:
+            continue
+
+        logging.debug('Searching for episodes from season ' + str(discname.season) + ' show:' + str(candidateShow))
+
+        if discname.season is not None:
+            logging.info('Fetching all episodes for TV show: ' + str(candidateShow.title) + ', this may take some time')
+            tvMediaObjs = scraper.MediaScraper().findTVEpisodesForSeason(candidateShow,discname.season)
+        else:
+            tvMediaObjs = scraper.MediaScraper().findTVEpisodesForShow(candidateShow)
+
+        logging.debug('Adding TV Media candidates: ' + str(tvMediaObjs))
+
+        candidateListTVEpisodes += tvMediaObjs
+
+    returnCandidateList = candidateListMovie+candidateListTVEpisodes
+
+    return returnCandidateList
 
 
 def getMediaObjectForLocalVideoTrack(trackPath,candidateList):
@@ -308,7 +285,7 @@ def getMediaObjectForLocalVideoTrack(trackPath,candidateList):
                     mediaObjReturn = mediaObj
 
                 if newRatio > 0.90:
-                    logging.debug('Ending search prematurely, result found with confidence(' +str(newRatio)+ ')')
+                    logging.debug('Ending search prematurely, result found with confidence(' +str(newRatio)+ ') for media: ' + str(mediaObjReturn))
                     return mediaObjReturn
 
     logging.debug('Best match ratio:' + str(mediaObjMatchRatio) + ' for mediafile: ' +str(mediaObjReturn))
@@ -392,14 +369,11 @@ def identifyContent(ripTrackPath,candidates=[]):
     elif os.path.exists(ripTrackPath):
         discName = disc_name.DiscName(ripTrackPath)
     
-        candidatesTV = allMediaCandidatesForDiscName(discName,'tvshow')
-        candidatesMovies = allMediaCandidatesForDiscName(discName,'movies')
-    
-        allCandidates = candidatesTV + candidatesMovies
+        candidates = allMediaCandidatesForDiscName(discName)
         
         videoTrack = disc_track.LocalTrackMkv(ripTrackPath)
         
-        mediaObjectReturn = getMediaObjectForLocalVideoTrack(ripTrackPath,allCandidates)
+        mediaObjectReturn = getMediaObjectForLocalVideoTrack(ripTrackPath,candidates)
         
     else:
         logging.error('File does not exist: ' + str(ripTrackPath))
@@ -433,7 +407,7 @@ def ripContent(config,notify,ripper,ripType,ripPath):
     ripTracks = []
 
     '''While we rip the video tracks. Asynchronously pre-cache all the possible media candidates'''
-    t = threading.Thread(target=allMediaCandidatesForDiscName, args = (discName,str(contentType)))
+    t = threading.Thread(target=allMediaCandidatesForDiscName)
     t.daemon = True
     t.start()
         
@@ -479,7 +453,7 @@ def ripContent(config,notify,ripper,ripType,ripPath):
             
     t.join()
             
-    mediaCandidates = allMediaCandidatesForDiscName(discName,str('movie')) + allMediaCandidatesForDiscName(discName,str('tvshow'))
+    mediaCandidates = allMediaCandidatesForDiscName(discName)
     mediaCandidates.sort(key=lambda x: string_match.distanceBetweenStrings(x.title,discName.title))        
 
     logging.info('Found media candidates: ' + str(mediaCandidates))
