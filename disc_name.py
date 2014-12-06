@@ -45,28 +45,24 @@ class DiscName:
         tmpName = title
         
         #Given file path
-        if '/' in tmpName  or '\\' in tmpName:
-            #replace directory seperators with spaces
-            tmpName = tmpName.replace('/',' ')
-            tmpName = tmpName.replace('\\',' ')
+        if os.path.exists(tmpName):
+            #remove extension
+            filePath, fileExtension = os.path.splitext(tmpName)
+            tmpName = tmpName.replace(fileExtension,'')
 
-            #remove makemkv file names e.g. title01.mkv
-            tmpName = re.sub(r'title\d{1,2}\.mkv','',tmpName)
-
-            #remove the movies filepath
-            tmpName = re.sub(r'(?i)\ movies\ ',' ',tmpName)
-
-            #Remove the home path from the title
-            homePathSpaceSeperatored = os.path.expanduser('~').replace('/',' ').replace('\\',' ').strip()
-            tmpName = tmpName.replace(homePathSpaceSeperatored,' ')
+            #Remove noise
+            pathComponents = DiscName._OSSplitPath(tmpName)
+            pathComponents = DiscName._removeUnnecessaryCharsFromPathComponents(pathComponents)
+            
+            regMakeMkvTitleTest = re.compile(r'^(?i)title\d+')
+            
+            pathComponents = filter(lambda x:not regMakeMkvTitleTest.match(x), pathComponents)
+            
+            tmpName = (' '.join(pathComponents)).strip()
+            
+            logging.debug('Stripped file path down to ' + tmpName)
         
-        tmpName = re.sub('(?i)\.iso$', '', tmpName)
-
-        # Clean up
-        tmpName = tmpName.replace("\"", "")
-        tmpName = tmpName.replace(".", " ")
-        tmpName = tmpName.replace("-", " ")
-        tmpName = tmpName.replace("  ", " ")
+        tmpName = re.sub('(?i).iso$', '', tmpName)
 
         # Remove anything in brackets
         tmpName = re.sub(r'\[.*?\]','',tmpName)
@@ -111,8 +107,8 @@ class DiscName:
 
                        r'(?i)[_| ]?AVC',
                        r'(?i)[_| ]?CHDBits',
-                       r'(?i)[_| ]?\[ETRG\]',
-                       r'(?i)[_| ]?\[eztv\]',
+                       r'(?i)[_| ]?ETRG?',
+                       r'(?i)[_| ]?eztv',
                        r'(?i)[_| ]?LOL',
                        r'(?i)[_| ]?KILLERS',
                        r'(?i)[_| ]?EVO',
@@ -124,7 +120,6 @@ class DiscName:
                        r'(?i)[_| ]?PublicHD',
                        r'(?i)[_| ]?SPLiTSVILLE',
                        r'(?i)[_| ]?READNFO',
-                       r'(?i)[_| ]?\[DE\]',
                        r'(?i)[_| ]?\juggs',
                        r'(?i)[_| ]?\NoGrouP',
                        r'(?i)[_| ]?\SUMO',
@@ -140,7 +135,14 @@ class DiscName:
                        r'(?i)[_| ]?D3viL',
                        r'(?i)[_| ]?Mafiaking',
                        r'(?i)[_| ]?Dts-wiki',
-                       
+                       r'(?i)[_| ]?CRYME',
+                       r'(?i)[_| ]?JYK',
+                       r'(?i)[_| ]?Hon3y',
+                       r'(?i)[_| ]?Team TellyTNT',
+                       r'(?i)[_| ]?ESubs',
+                       r'(?i)[_| ]?MBRHDRG',
+                       r'(?i)[_| ]?ACAB',
+
                        r'ᴴᴰ',
                        r'(?i)[_| ]?[1|2][_| ]?cd',
                        r'(?i)[_| ]?[1|2][_| ]?dvd',
@@ -178,8 +180,13 @@ class DiscName:
                 if matchResults != None:
                     tmpName = re.sub(regTest,'',tmpName)
                     didRegexMatch = True
-                    
-                    
+
+        # Clean up
+        tmpName = tmpName.replace("\"", "")
+        tmpName = tmpName.replace(".", " ")
+        tmpName = tmpName.replace("-", " ")
+        tmpName = tmpName.replace("  ", " ")
+
         #replace any erronous chars with space & remove double spaces
         tmpName = tmpName.replace('[]',' ').replace('()',' ').replace('{}',' ').replace('--',' ').replace('_',' ').strip()
         tmpName = re.sub('\s{2,}', ' ', tmpName)
@@ -256,8 +263,69 @@ class DiscName:
 
         return [tmpName,season,disc]
 
+    @staticmethod
+    def _OSSplitPath(split_path):
+        if split_path[-1] == r'/' or split_path[-1] == r'\\':
+            split_path = split_path[0:len(split_path)-1]
+
+        pathSplit_lst = []
+        while os.path.basename(split_path):
+            pathSplit_lst.append( os.path.basename(split_path) )
+            split_path = os.path.dirname(split_path)
+        pathSplit_lst.reverse()
+        return pathSplit_lst
+    
+    @staticmethod
+    def _removeUnnecessaryCharsFromPathComponents(pathComponents):
+        filteredComponents = pathComponents
+        
+        homePathComponents = DiscName._OSSplitPath(os.path.expanduser('~'))
+        
+        for pathStrip in homePathComponents:
+            filteredComponents = filter(lambda x:x.lower()!=pathStrip.lower(), filteredComponents)
+        
+        regexChecks = [r'^(?i)(my)?\s?(home)?\s?movies?$',
+                       r'^(?i)(my)?\s?(home)?\s?films?$',
+                       r'^(?i)(my)?\s?(home)?\s?videos?$',
+                       r'^(?i)(my)?\s?(home)?\s?tv\s?shows?$',
+                       r'^(?i)(my)?\s?(home)?\s?tv$',
+                       r'^(?i)(my)?\s?(home)?\s?downloads?$',
+                       r'^(?i)(my)?\s?(home)?\s?shares?$',
+                       r'^(?i)(my)?\s?(home)?\s?desktops?$',
+                       r'^(?i)(my)?\s?(home)?\s?documents?$',
+                       r'^(?i)(my)?\s?(home)?\s?app(lication)?s?$',
+                       r'^(?i)$',
+                       r'^(?i)homes?$',
+                       r'^(?i)use?rs?$',
+                       r'^(?i)libs?$',
+                       r'^(?i)lo?ca?l?$',
+                       r'^(?i)var$',
+                       r'^(?i)s?bin$',
+                       r'^(?i)etc$',
+                       r'^(?i)opt$',
+                       r'^(?i)dis[c|k]$',
+                       r'^(?i)workspaces?$',
+                       r'^(?i)volumes?$',
+                       r'^(?i)mo?u?nts?$',
+                       r'^(?i)ripsnort$',
+                       r'^(?i)(in)?completes$',
+                       ]
+        
+        for regTest in regexChecks:
+            filteredComponents = filter(lambda x:not re.compile(regTest).match(x), filteredComponents)
+
+        return filteredComponents
+    
 
 def test():
+    assert DiscName('My.Movie.2014.3D.BluRay.720p.x264.DTS-MA-ac3.ISO').title == 'My Movie 2014'
+    assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie 2014'
+
+    pathComponents = ['Die Hard','ripsnort','disc','disk','desktop','documents','my home movies','volumes','users','mnt','user','lcl','local','bin','sbin','var','lib','libs','home','homes','mymovies','movies','homemovies','video','videos','video','myvideo','homevideos','download','mydownloads','share','shares','workspace']
+    filteredComponents = DiscName._removeUnnecessaryCharsFromPathComponents(pathComponents)
+    
+    assert len(filteredComponents) == 1
+    assert 'Die Hard' == filteredComponents[0]
 
     assert 'Die Hard' == DiscName._removeUnnecessaryCharsFromTitle('DIE_HARD_PAL')
     assert 'Die Hard' == DiscName._removeUnnecessaryCharsFromTitle('DIE_HARD_NTSC')
@@ -288,15 +356,15 @@ def test():
 
     assert DiscName('DIE_HARD_SPECIAL_3D_EDITION').title == 'Die Hard'
     assert DiscName('DIE_HARD_SPECIAL_3D_EDITION').season == None
-    assert DiscName('DIE_HARD_SPECIAL_3D_EDITION').discNumber == None
+    assert DiscName('DIE_HARD_SPECIAL_3D_EDITION').discNumber == 1
 
     assert DiscName('AVATAR_3D_EDITION').title == 'Avatar'
     assert DiscName('AVATAR_3D_EDITION').season == None
-    assert DiscName('AVATAR_3D_EDITION').discNumber == None
+    assert DiscName('AVATAR_3D_EDITION').discNumber == 1
 
     assert DiscName('The Good, the Bad and the Ugly').title == 'The Good, The Bad And The Ugly'
     assert DiscName('The Good, the Bad and the Ugly').season == None
-    assert DiscName('The Good, the Bad and the Ugly').discNumber == None
+    assert DiscName('The Good, the Bad and the Ugly').discNumber == 1
 
     assert DiscName('CSI2_3').title == 'CSI'
     assert DiscName('CSI2_3').season == 2
@@ -340,7 +408,7 @@ def test():
     
     assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie 2014'
     
-    assert DiscName('red.hood.2010.dvdrip.xvid-qcf').title == 'Red Hood 2010'
+    assert DiscName('red.hood.2010.dvdrip.xvid').title == 'Red Hood 2010'
 
 
 if __name__ == "__main__":
