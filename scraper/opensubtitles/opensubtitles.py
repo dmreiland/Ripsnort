@@ -89,6 +89,10 @@ class OpenSubtitles:
         self.server = xmlrpclib.ServerProxy('http://api.opensubtitles.org/xml-rpc')
         socket.setdefaulttimeout(10)
         self.sessionToken = self._logIn(username, password)
+        
+        if self._remainingDownloadQuota() < 1:
+            raise Exception('OpenSubtitles: Insufficient remaining download quota')
+
         logging.debug('OpenSubtitles initialized: ' + str(self.sessionToken) + ', ' + str(username) + ':' + str(password))
 
     def __del__(self):
@@ -187,6 +191,19 @@ class OpenSubtitles:
         
     def _logOut(self,token):
         self.server.LogOut(token)
+        
+    def _remainingDownloadQuota(self):
+        quotaRemaining = 0
+        
+        serverInfo = self.server.ServerInfo()
+        
+        try:
+            quotaRemaining = serverInfo['download_limits']['client_download_quota']
+        except:
+            pass
+        
+        return quotaRemaining
+        
         
     def _fetchZipDownloadLinks(self,imdbId,language=None,seasonNumber=None,episodeNumber=None,retryCount=1):
         zipDownloadLinks = []

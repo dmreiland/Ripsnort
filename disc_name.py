@@ -303,6 +303,7 @@ class DiscName:
                        r'^(?i)s?bin$',
                        r'^(?i)etc$',
                        r'^(?i)opt$',
+                       r'^(?i)private$',
                        r'^(?i)dis[c|k]$',
                        r'^(?i)workspaces?$',
                        r'^(?i)volumes?$',
@@ -321,7 +322,7 @@ def test():
     assert DiscName('My.Movie.2014.3D.BluRay.720p.x264.DTS-MA-ac3.ISO').title == 'My Movie 2014'
     assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie 2014'
 
-    pathComponents = ['Die Hard','ripsnort','disc','disk','desktop','documents','my home movies','volumes','users','mnt','user','lcl','local','bin','sbin','var','lib','libs','home','homes','mymovies','movies','homemovies','video','videos','video','myvideo','homevideos','download','mydownloads','share','shares','workspace']
+    pathComponents = ['Die Hard','ripsnort','private','disc','disk','desktop','documents','my home movies','volumes','users','mnt','user','lcl','local','bin','sbin','var','lib','libs','home','homes','mymovies','movies','homemovies','video','videos','video','myvideo','homevideos','download','mydownloads','share','shares','workspace']
     filteredComponents = DiscName._removeUnnecessaryCharsFromPathComponents(pathComponents)
     
     assert len(filteredComponents) == 1
