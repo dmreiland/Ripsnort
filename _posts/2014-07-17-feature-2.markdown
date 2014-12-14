@@ -1,0 +1,10 @@
+---
+layout: default
+id: 2
+date: 2014-07-17
+img: features/catalog-icon.png
+alt: image-alt
+category: feature
+description: Scans existing video files for subtitles and compares to uploaded to find media matches
+title: Catalog
+---

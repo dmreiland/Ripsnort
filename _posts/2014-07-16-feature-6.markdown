@@ -1,0 +1,11 @@
+---
+layout: default
+id: 6
+date: 2014-07-16
+img: features/imdb-icon.png
+alt: image-alt
+category: feature
+description: Support for fetching data from IMDB, Opensubtitles.org and AcronymFinder.com
+title: Scraping
+
+---

@@ -1,0 +1,14 @@
+---
+layout: default
+id: 8
+modal-id: 2
+date: 2014-07-18
+img: install/linux.png
+alt: image-alt
+project-date: April 2014
+client: Start Bootstrap
+category: install
+description: installation instructions for Linux (debian based distros)
+title: Linux
+install-image: install/install-linux.png
+---

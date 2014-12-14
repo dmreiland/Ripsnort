@@ -1,0 +1,7 @@
+---
+layout: default
+date: 2014-07-18
+category: faq
+description: When Ripsnort compares available subtitles, if the match accuracy is greater than 90% it will prematurely terminate scanning and return with its current media item. If this is not the case then it will continue scanning. If the end of the subtitle list has been reached Ripsnort will return the highest available matching ratio provided it has a greater than <em>70%</em> match accuracy
+title: How accurate is it?
+---

@@ -1,0 +1,7 @@
+---
+layout: default
+date: 2014-07-18
+category: faq
+description: Every public IP has a download quota of 200 subtitles per day. You can either wait until tomorrow or become a OpenSubtitles.org VIP member <a href='http://www.opensubtitles.org/en/support#vip'>[link]</a> which increases it to 1000. Ensure you add your login details to config.ini
+title: I've reached my OpenSubtitles quota limit. Now what?
+---

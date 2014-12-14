@@ -1,0 +1,7 @@
+---
+layout: default
+date: 2014-07-18
+category: about
+description: <a href='http://www.makemkv.com'>MakeMKV</a> <br> <a href='http://imdbpy.sourceforge.net'>IMDbPY</a> <br> <a href='http://www.opensubtitles.org'>OpenSubtitles.org</a> <br> <a href='http://discident.com'>Discident.com</a> <br> <a href='https://github.com/ruediger/VobSub2SRT'>VobSub2SRT</a> <br> <a href='https://code.google.com/p/tesseract-ocr'>Tesseract</a> <br> <a href='http://www.videohelp.com/tools/BDSup2Sub'>BDSup2Sub</a> <br>
+title: Tools used
+---

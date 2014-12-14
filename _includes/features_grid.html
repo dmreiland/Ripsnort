@@ -1,0 +1,24 @@
+
+    <!-- Portfolio Grid Section -->
+    <section id="features">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 text-center">
+                    <h2>Features</h2>
+                    <hr class="star-primary">
+                </div>
+            </div>
+            <div class="row">
+                {% assign sorted_posts = (site.posts | sort: 'id') %}
+                {% for post in sorted_posts %}
+					{% if post.category contains 'feature' %}
+						<div class="col-sm-2" style='text-align:center'>
+							<img src="img/{{ post.img }}" class="img-responsive" alt="{{ post.alt }}">
+							<h4>{{ post.title }}</h4>
+						    <span>{{ post.description }}</span>
+						</div>
+					{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>

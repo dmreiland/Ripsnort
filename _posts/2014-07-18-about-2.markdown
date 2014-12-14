@@ -1,0 +1,7 @@
+---
+layout: default
+date: 2014-07-18
+category: about
+description: This project is free. However it is dependant on the OpenSubtitles.org website. If this project has been useful to you please consider contributing by becoming a VIP Member
+title: Donations
+---

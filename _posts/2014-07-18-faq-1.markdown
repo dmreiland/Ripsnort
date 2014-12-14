@@ -1,0 +1,7 @@
+---
+layout: default
+date: 2014-07-18
+category: faq
+description: Ripping a DVD/Bluray disc can take up to an hour. Ripsnort will then take several minutes to fetch all possible media related items and extract the text from these new video files. The bulk of processing is comparing subtitles using the <a href='http://en.wikipedia.org/wiki/Levenshtein_distance'>Levenshtein distance</a> algorithm. Unfortunately this is the only accurate way. If you have a relatively fast PC and few comparisons are made matching should be achieved in less than 5mins
+title: Why is it taking so long to run?
+---

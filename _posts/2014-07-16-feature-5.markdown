@@ -1,0 +1,11 @@
+---
+layout: default
+id: 5
+date: 2014-07-16
+img: features/automation-icon.png
+alt: image-alt
+category: feature
+description: Start ripping discs / cataloging videos automatically
+title: Automate
+
+---

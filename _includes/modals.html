@@ -1,0 +1,120 @@
+ <!-- INSTALL Modal -->
+{% for post in site.posts %}
+	{% if post.category contains 'install' %}
+		<div class="portfolio-modal modal fade" id="installModal-{{ post.modal-id }}" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-lg">
+
+				<div class="container">
+					<div class="row">
+
+						<div style='background-color:#fff;' class="col-lg-8"">
+							<div style='margin-left:auto;margin-right:20px;'>
+								<button style='border-top-right-radius:0px;border-top-left-radius:0px' type="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+							</div>
+
+							<div class="modal-body">
+								<h2 style='text-align:center;'>{{ post.title }}</h2>
+								<p style='text-align:center;'>{{ post.description }}</p>
+								<hr class="star-primary">
+								<br>
+
+								<h4>Automated</h4>
+								<span>Open terminal and copy & paste the following</span>
+								{% highlight bash %}
+git clone https://github.com/Ryandev/Ripsnort ~/ripsnort; 
+sudo ~/ripsnort/setup.sh
+								{% endhighlight %}
+
+								<br>
+
+								<h4>Manual</h4>
+								<span>Install the following software<span>
+								<ul class="list-inline item-details">
+								    <li>
+										<a href='http://www.makemkv.com/download' target="_blank">
+											<img src='img/install/makemkv.png'></img>
+										</a>
+
+								    <li>
+										<a href='https://www.bunkus.org/videotools/mkvtoolnix/downloads.html' target="_blank">
+											<img src='img/install/mkvtoolnix.png'></img>
+										</a>
+
+								    <li>
+										<a href='https://github.com/ruediger/VobSub2SRT' target="_blank">
+											<img src='img/install/vobsub2srt.png'></img>
+										</a>
+
+								    <li>
+										<a href='http://www.videohelp.com/tools/BDSup2Sub' target="_blank">
+											<img src='img/install/bdsup2sub.png'></img>
+										</a>
+
+								    <li>
+										<a href='https://github.com/Ryandev/Ripsnort.git' target="_blank">
+											<img src='img/install/ripsnort.png'></img>
+										</a>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	{% endif %}
+{% endfor %}
+
+
+ <!-- USE Modal -->
+{% assign all_use_posts = (site.posts | where:'category','use') %}
+{% for post in all_use_posts %}
+{% if post.subcategory %}
+{% else %}
+	<div class="portfolio-modal modal fade" id="useModal-{{ post.modal-id }}" tabindex="-1" role="dialog" aria-hidden="true">
+		<div class="modal-content">
+			<div class="close-modal" data-dismiss="modal">
+				<div class="lr">
+					<div class="rl">
+					</div>
+				</div>
+			</div>
+			<div class="container-fluid">
+
+
+					<div class="col-lg-8 col-lg-offset-2">
+						<div class="modal-body">
+							<h2>{{ post.title }}</h2>
+							<hr class="star-primary">
+
+
+                {% assign sorted_posts = (site.posts | sort: 'id') %}
+					{% for subpost in site.posts %}
+						{% if subpost.subcategory == post.title  %}
+							<div class="row">
+								<div class="col-md-16">
+									<h3>{{ subpost.title }}</h3>
+									<p class='stringsub'>{{ subpost.description }}</p>
+									{% highlight bash %}
+										{% for code_snip in subpost.code %} 
+{{ code_snip }}
+										{% endfor %}
+									{% endhighlight %}
+								</div>
+							</div>
+						{% endif %}
+					{% endfor %}
+
+
+
+
+							<button type="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+						</div>
+					</div>
+				
+
+
+			</div>
+		</div>
+	</div>
+{% endif %}
+{% endfor %}

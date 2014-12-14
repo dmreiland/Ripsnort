@@ -1,0 +1,28 @@
+# Site settings
+title: Ripsnort
+email: your-email@domain.com
+description: "DVD/Bluray ripping & <br>video cataloging"
+project_url: https://github.com/Ryandev/Ripsnort.git
+project_name: ripsnort
+
+# Color settings (hex-codes without the leading hash-tag)
+color:
+  primary: 71A9FF #80B3FF
+  secondary: 6698E6 #FD6E8A
+  secondary-dark: 5C89CF #A2122F
+  link-primary: 71A9FF
+  link-secondary: FFFFFF
+
+#  primary: 71A9FF #80B3FF
+#  secondary: 6698E6 #FD6E8A
+#  secondary-dark: 5C89CF #A2122F
+#  heading: ffffff
+
+  
+# Footer settings
+footer:
+  copyright: <a href='http://jekyllrb.com'>Powered by Jekyll.</a> <a href='https://github.com/jeromelachaud/freelancer-theme'>Theme:Freelancer</a>
+
+# Build settings
+markdown: kramdown
+permalink: pretty

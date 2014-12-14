@@ -1,0 +1,11 @@
+---
+layout: default
+id: 1
+date: 2014-07-16
+img: features/ripping-icon.png
+alt: image-alt
+category: feature
+description: Video track extraction from DVDs, Blu-rays, ISOs & disc folders
+title: Ripping
+
+---

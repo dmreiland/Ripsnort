@@ -1,0 +1,7 @@
+---
+layout: default
+date: 2014-07-18
+category: about
+description: <a href='http://www.opensource.org/licenses/BSD-3-Clause'>BSD 3-Clause http://www.opensource.org/licenses/BSD-3-Clause</a>
+title: License
+---
