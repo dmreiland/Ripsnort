@@ -75,63 +75,6 @@ def doesFolderContainVideoFiles(folderDir):
     return doesContentVideoFiles
 
 
-def contentTypeForTracksAndName(tracks,name,config):
-    if len(name) == 0 or len(tracks) == 0:
-        return None
-            
-    logging.debug('Determining content type for tracks: ' + str(tracks) + ' track name: ' + str(name))
-
-    contentType = None
-    
-    hasSeasonInName = 'season' in name.lower()
-    hasSeriesInName = 'series' in name.lower()
-    hasDiscInName = 'disc' in name.lower()
-    hasDiskInName = 'disk' in name.lower()
-    
-    if ( hasSeasonInName or hasSeriesInName ) and ( hasDiscInName or hasDiskInName ):
-        #nameIndicatesTVShow
-        contentType = 'tvshow'
-    else:
-        #check the track lengths
-        minDuration = int(config['ripper']['videotrack_min_length_seconds'])
-        maxDuration = int(config['ripper']['videotrack_max_length_seconds'])
-        
-        tracksFiltered = disc_track.tracksBetweenDurationMinMax(tracks,minDuration,maxDuration)
-        
-        #check the durations of the tv tracks, if they are similar in length, then we can assume they are episodes
-        
-        durations = []
-        durationTotalS = 0
-        
-        for track in tracksFiltered:
-            durations.append( track.durationS )
-            durationTotalS += track.durationS
-        
-        if len(durations) > 0:
-            durationAverage = durationTotalS / len(durations)        
-            durationsAreCloseToAverage = True
-    
-            for track in tracksFiltered:
-                if abs(track.durationS / durationAverage) < 0.9 or abs(track.durationS / durationAverage) > 1.1:
-                    durationsAreCloseToAverage = False
-                    break
-        
-            logging.debug('Average track duration: ' + str(durationAverage) + ' durationsAreClose: ' + str(durationsAreCloseToAverage))
-        
-            if durationsAreCloseToAverage:
-                contentType = 'tvshow'
-            else:
-                #durations don't all match, assume its a movie
-                contentType = 'movie'
-    
-    if contentType == None:
-        contentType = 'Unknown'
-    
-    logging.debug('Content type for name:' + str(name) + ', tracks:' + str(tracks) + ' = ' + str(contentType))
-    
-    return contentType
-
-
 def outputFileForTrackWithFormat(mediaObj,fileformat):
     newFilePath = fileformat
     
@@ -202,8 +145,8 @@ def outputFileForTrackWithFormat(mediaObj,fileformat):
 
 
 def allMediaCandidatesForDiscName(discname):
-    candidateListMovie = scraper.MediaScraper().findContent(discname.title,'movie')
-    candidateListTVShow = scraper.MediaScraper().findContent(discname.title,'tvshow')
+    candidateListMovie = scraper.MediaScraper().findMovie(discname.title)
+    candidateListTVShow = scraper.MediaScraper().findTVShow(discname.title)
     candidateListTVEpisodes = []
 
     '''Remove duplicates'''
@@ -220,11 +163,12 @@ def allMediaCandidatesForDiscName(discname):
 
         logging.debug('Searching for episodes from season ' + str(discname.season) + ' show:' + str(candidateShow))
 
+        tvMediaObjs = scraper.MediaScraper().findTVEpisodesForShow(candidateShow)
+
         if discname.season is not None:
-            logging.info('Fetching all episodes for TV show: ' + str(candidateShow.title) + ', this may take some time')
-            tvMediaObjs = scraper.MediaScraper().findTVEpisodesForSeason(candidateShow,discname.season)
-        else:
-            tvMediaObjs = scraper.MediaScraper().findTVEpisodesForShow(candidateShow)
+            seasonEpis = filter(lambda x:x.season_number == discname.season, tvMediaObjs)
+            nonSeasonEpis = filter(lambda x:x.season_number != discname.season, tvMediaObjs)
+            tvMediaObjs = seasonEpis + nonSeasonEpis
 
         logging.debug('Adding TV Media candidates: ' + str(tvMediaObjs))
 
@@ -256,9 +200,9 @@ def getMediaObjectForLocalVideoTrack(trackPath,candidateList):
         allLanguages.insert(0,'eng')
     
     #Get all the subtitle languages and test 2 versions of each (maximum of 3 languages)
-    for localSubLangIndex in range(0,min(3,len(allLanguages))):
+    for localSubLangIndex in range(0,min(1,len(allLanguages))):
         localSubLang = allLanguages[localSubLangIndex]
-        for localSubIndex in range(0,min(2,localVideoTrack.numberOfSubtitlesOfLanguage(localSubLang))):
+        for localSubIndex in range(0,min(3,localVideoTrack.numberOfSubtitlesOfLanguage(localSubLang))):
 
             logging.debug('Track local caption at index: ' + str(localSubLangIndex) + ' for language ' + str(localSubLang))
 
@@ -309,22 +253,6 @@ def isTrackInDurationRange(config,ripTrack):
         
     return shouldKeep
 
-def ripPathIncompleteForContentType(config,contentType):
-    
-    if str(contentType) == 'movie':
-        ripPathIncomplete = config['ripper']['movie_incomplete_save_path']
-
-    elif str(contentType) == 'tvshow':
-        ripPathIncomplete = config['ripper']['tv_incomplete_save_path']
-
-    else:
-        if not contentType:
-            contentType = 'Unknown'
-
-        ripPathIncomplete = os.path.join(apppath.pathTemporary(),contentType)
-        
-    return ripPathIncomplete
-
 def ripPathCompleteForContentType(config,contentType):
     
     if str(contentType) == 'movie':
@@ -367,21 +295,26 @@ def identifyContent(ripTrackPath,candidates=[]):
 
     #We don't want to override an existing file, so find a filename not currently used
     elif os.path.exists(ripTrackPath):
-        discName = disc_name.DiscName(ripTrackPath)
+        discName = disc_name.DiscName(os.path.dirname(ripTrackPath))
     
         candidates = allMediaCandidatesForDiscName(discName)
-        
+
         videoTrack = disc_track.LocalTrackMkv(ripTrackPath)
         
         mediaObjectReturn = getMediaObjectForLocalVideoTrack(ripTrackPath,candidates)
         
+        if not mediaObjectReturn:
+            discName = disc_name.DiscName(os.path.basename(ripTrackPath))
+            candidates = allMediaCandidatesForDiscName(discName)
+            videoTrack = disc_track.LocalTrackMkv(ripTrackPath)
+            mediaObjectReturn = getMediaObjectForLocalVideoTrack(ripTrackPath,candidates)
+
     else:
         logging.error('File does not exist: ' + str(ripTrackPath))
     
     return mediaObjectReturn
 
 def ripContent(config,notify,ripper,ripType,ripPath):
-    drive = None
 
     if ripType == 'disc':
         drive = disc_drive.DiscDrive(ripPath)
@@ -393,16 +326,25 @@ def ripContent(config,notify,ripper,ripType,ripPath):
             logging.error('No disc inserted!')
             sys.exit(1)
 
-    if ripType == 'disc':
         discName = disc_name.DiscName(drive.mountedDiscName())
+
     elif ripType == 'file' or ripType == 'dir':
         discName = disc_name.DiscName(os.path.basename(ripPath))
 
-    contentType = contentTypeForTracksAndName(ripper.tracks(),discName.formattedName,config)
+    ripPathIncompleteRelative = config['ripper']['precatalog_save_path']
+    ripPathIncompleteAbsolute = os.path.join(ripPathIncompleteRelative,discName.formattedName)
+    
+    if os.path.exists(ripPathIncompleteAbsolute):
+        idx=1
+        newPath = ripPathIncompleteAbsolute
 
-    logging.info('Content type: ' + str(contentType) + ', disc ' + str(discName.title))
+        while os.path.exists(newPath):
+            newPath = ripPathIncompleteAbsolute + ' (' + str(idx) + ')'
+            idx += 1
 
-    ripPathIncomplete = ripPathIncompleteForContentType(config,contentType)
+        ripPathIncompleteAbsolute = newPath
+
+    assert not os.path.exists(ripPathIncompleteAbsolute)
 
     ripTracks = []
 
@@ -410,7 +352,7 @@ def ripContent(config,notify,ripper,ripType,ripPath):
     t = threading.Thread(target=allMediaCandidatesForDiscName)
     t.daemon = True
     t.start()
-        
+
     if ripper.hasLocatedMediaTracks():
         discTracksToRip = ripper.tracks()
 
@@ -422,18 +364,16 @@ def ripContent(config,notify,ripper,ripType,ripPath):
         logging.info('Ripping disc tracks: ' + str(discTracksToRip))
         notify.startedRippingTracks( discTracksToRip, discName.formattedName )
 
-        ripTracks = ripper.ripTracks( discTracksToRip, os.path.join(ripPathIncomplete,discName.formattedName) )
+        ripTracks = ripper.ripTracks( discTracksToRip, ripPathIncompleteAbsolute )
             
         logging.info('Ripped tracks ' + str(ripTracks))
     else:
         #Unable to find out matching track candidates. Rip all then filter after
         notify.startedRippingTracks( [], discName.formattedName )
-            
-        ripPath = os.path.join(ripPathIncomplete,discName.formattedName)
 
-        logging.info('Ripping all disc tracks to: ' + str(ripPath))
+        logging.info('Ripping all disc tracks to: ' + str(ripPathIncompleteAbsolute))
 
-        ripTracks = ripper.ripAllTracks( ripPath )
+        ripTracks = ripper.ripAllTracks( ripPathIncompleteAbsolute )
  
         deleteRipTracks = []
         keepRipTracks = []
@@ -450,77 +390,10 @@ def ripContent(config,notify,ripper,ripType,ripPath):
 
         ripTracks = keepRipTracks
 
-            
     t.join()
-            
-    mediaCandidates = allMediaCandidatesForDiscName(discName)
-    mediaCandidates.sort(key=lambda x: string_match.distanceBetweenStrings(x.title,discName.title))        
-
-    logging.info('Found media candidates: ' + str(mediaCandidates))
-
-    ripTrackMediaMap = {}
-
-    for rippedTrack in ripTracks:
-        if os.path.exists(rippedTrack.filepath) == False:
-            logging.error('Failed to find extracted ripped file: ' + rippedTrack.filepath)
-            continue
-                
-        logging.debug('Finding media for track: ' + str(rippedTrack))
-        mediaObj = getMediaObjectForLocalVideoTrack(rippedTrack.filepath,mediaCandidates)
-        logging.debug('Got media object: ' + str(mediaObj) + ' for file: ' + rippedTrack.filepath)
-                
-        if mediaObj is None:
-            continue
-                
-        ripTrackMediaMap[rippedTrack] = mediaObj
-
-        fileformat = ''
-
-        if mediaObj.content_type == 'movie':
-            fileformat = config['ripper']['movie_save_format']
-            ripPathComplete = ripPathCompleteForContentType(config,mediaObj.content_type)
-
-        elif mediaObj.content_type == 'tvshow' or mediaObj.content_type == 'tvepisode':
-            fileformat = config['ripper']['tv_save_format']
-            ripPathComplete = ripPathCompleteForContentType(config,mediaObj.content_type)
-
-        else:
-            logging.error('Unrecognised content type: ' + str(mediaObj.content_type))
-            continue
-
-        logging.debug('Content type: ' + str(mediaObj.content_type) + ', destination folder: ' + str(ripPathComplete))
-
-        newFileExt = rippedTrack.filepath.split('.')[-1]
-        newFileName = outputFileForTrackWithFormat(mediaObj,fileformat)
-        newFileName = sanitizeFilePath(newFileName)
-        dstFile = os.path.join(ripPathComplete,(newFileName+'.'+newFileExt))
-                
-        if not os.path.exists(os.path.dirname(dstFile)):
-            logging.debug('Creating folder path: ' + os.path.dirname(dstFile))
-            os.makedirs(os.path.dirname(dstFile))
-        
-        dstFile = findNonConflictingFilePath(dstFile)
-
-        logging.info('Moving file from: ' + rippedTrack.filepath + ' destination: ' + dstFile)
-        os.rename(rippedTrack.filepath,dstFile)
-
-    incompleteFolder = os.path.join(ripPathIncomplete,discName.formattedName) 
-    if not doesFolderContainVideoFiles(incompleteFolder):
-        logging.info('Removing folder: ' + str(incompleteFolder))
-        try:
-            shutil.rmtree(incompleteFolder)
-        except:
-            pass
-                
-    #TODO change notify message to include move location
-
-    if len(ripTracks) > 0:
-        notify.finishedRippingTracks( ripTracks, discName.formattedName, ripTrackMediaMap )
-    else:
-        notify.failure( discName.formattedName, 'Failed to locate correct video tracks to rip' )
 
     if ripType == 'disc':
-        logging.info('Ejecting drive: ' + str(ripPath))
+        logging.info('Ejecting drive: ' + str(ripPathIncompleteAbsolute))
         drive.openTray()
 
     return ripTracks
@@ -536,7 +409,7 @@ usage: [-v] disc
     -r --rename        rename media content after identifying
     -c --clearcache    clear everything from cache
 
-example: ./autorip.py -v /dev/disk2
+example: ./ripsnort.py -v /dev/disk2
 '''
 
 
@@ -551,8 +424,8 @@ if __name__ == "__main__":
         print '''No internet connection found. Ripsnort requires internet access to run'''
         sys.exit(1)
 
-    ripPath=''
-    ripType=''
+    argPath=''
+    argType=''
     identifyMode = False
     renameMode = False
 
@@ -585,21 +458,26 @@ if __name__ == "__main__":
             loggingLevel = "debug"
 
         else:
-            isFolder = os.path.isdir(arg)
-            isISO = os.path.isfile(arg)
-            isDiscDevice = disc_drive.DiscDrive.doesDeviceExist(arg)
+            argPath = arg
             
-            if isFolder:
-                ripPath = arg
-                ripType = 'dir'
+            if disc_drive.DiscDrive.doesDeviceExist(argPath):
+                argType = 'disc'
 
-            elif isISO:
-                ripPath = arg
-                ripType = 'file'
+            elif os.path.isdir(argPath):
+                argType = 'dir'
 
-            elif isDiscDevice:
-                ripPath = arg
-                ripType = 'disc'
+            elif os.path.isfile(arg):
+                filePath, fileExtension = os.path.splitext(argPath)
+                
+                if fileExtension == 'iso' or fileExtension == 'img':
+                    argType = 'file'
+                elif fileExtension == '.mkv' or fileExtension == '.mp4' or fileExtension == '.avi' :
+                    argType = 'video'
+
+                else:
+                    print 'Unrecognised disc/argument: \'' + arg + '\''
+                    print usage()
+                    sys.exit(1)
 
             else:
                 print 'Unrecognised disc/argument: \'' + arg + '\''
@@ -621,70 +499,79 @@ if __name__ == "__main__":
 
     #load config
     config = inireader.loadFile(os.path.join(os.path.dirname(__file__),'config.ini'))
-
-    if identifyMode or renameMode:
-        logging.info('Ripsnort begin -------')
-
-        mediaObj = identifyContent(ripPath)
-        if mediaObj:
-            if renameMode:
-                if mediaObj.content_type == 'movie':
-                    fileformat = config['ripper']['movie_save_format']
-                    ripPathComplete = ripPathCompleteForContentType(config,mediaObj.content_type)
-
-                elif mediaObj.content_type == 'tvshow' or mediaObj.content_type == 'tvepisode':
-                    fileformat = config['ripper']['tv_save_format']
-                    ripPathComplete = ripPathCompleteForContentType(config,mediaObj.content_type)
-
-                else:
-                    logging.error('Unrecognised content type: ' + str(mediaObj.content_type))
-                    sys.exit(1)
-
-                logging.debug('Content type: ' + str(mediaObj.content_type) + ', destination folder: ' + str(ripPathComplete))
-
-                newFileExt = ripPath.split('.')[-1]
-                newFileName = outputFileForTrackWithFormat(mediaObj,fileformat)
-                newFileName = sanitizeFilePath(newFileName)
-                dstFile = os.path.join(ripPathComplete,(newFileName+'.'+newFileExt))
-
-                if not os.path.exists(os.path.dirname(dstFile)):
-                    logging.debug('Creating folder path: ' + os.path.dirname(dstFile))
-                    os.makedirs(os.path.dirname(dstFile))
-        
-                dstFile = findNonConflictingFilePath(dstFile)
-
-                logging.info('Moving file from: ' + str(ripPath) + ' destination: ' + str(dstFile))
-                os.rename(ripPath,dstFile)
-
-            else:
-                if mediaObj.content_type == 'tvepisode':
-                    print 'ContentMatch Show: ' + str(mediaObj.title)
-                    print 'ContentMatch Season: ' + str(mediaObj.season_number)
-                    print 'ContentMatch EpisodeNumber: ' + str(mediaObj.episode_number)
-                    print 'ContentMatch EpisodeName: ' + str(mediaObj.episode_title)
-                else:
-                    print 'ContentMatch Title: ' + str(mediaObj.title)
-
-                print 'ContentMatch Year: ' + str(mediaObj.production_year)
-        else:
-            print 'Failed to find media for: ' + str(ripPath)
-
-        logging.info('Ripsnort complete -------')
-
-    elif ripPath:
-        logging.info('Ripsnort begin -------')
+    notify = notification.Notification(config['notification'])
+    
+    if argType == 'disc' or argType == 'dir' or argType == 'image':
+        logging.info('Rip begin -------')
 
         #load ripper, scraper and notification
-        notify = notification.Notification(config['notification'])
-        ripper = ripper.Ripper(config['ripper'],ripPath,ripType)
+        ripper = ripper.Ripper(config['ripper'],argPath,argType)
 
-        ripContent(config,notify,ripper,ripType,ripPath)
-        logging.info('Ripsnort complete -------')
+        rippedTracks = ripContent(config,notify,ripper,argType,argPath)
+
+        uncatalogedFilePaths = []
+        for track in rippedTracks:
+            uncatalogedFilePaths.append(track.filepath)
+        
+        if len(rippedTracks) == 0:
+            logging.warn("Didn't extract any video tracks from " + argPath)
+
+        logging.info('Rip complete -------')
 
     else:
-        print 'Invalid arguments'
-        print usage()
-        sys.exit(1)
+        uncatalogedFilePaths = [argPath]
+        
+
+    if identifyMode or renameMode:
+        logging.info('Catalog begin -------')
+        
+        for uncatalogedFilePath in uncatalogedFilePaths:
+            mediaObj = identifyContent(uncatalogedFilePath)
+
+            if mediaObj:
+                if renameMode:
+                    if mediaObj.content_type == 'movie':
+                        fileformat = config['ripper']['movie_save_format']
+                        ripPathComplete = ripPathCompleteForContentType(config,mediaObj.content_type)
+
+                    elif mediaObj.content_type == 'tvshow' or mediaObj.content_type == 'tvepisode':
+                        fileformat = config['ripper']['tv_save_format']
+                        ripPathComplete = ripPathCompleteForContentType(config,mediaObj.content_type)
+
+                    else:
+                        logging.error('Unrecognised content type: ' + str(mediaObj.content_type))
+                        sys.exit(1)
+
+                    logging.debug('Content type: ' + str(mediaObj.content_type) + ', destination folder: ' + str(ripPathComplete))
+
+                    newFileExt = uncatalogedFilePath.split('.')[-1]
+                    newFileName = outputFileForTrackWithFormat(mediaObj,fileformat)
+                    newFileName = sanitizeFilePath(newFileName)
+                    dstFile = os.path.join(ripPathComplete,(newFileName+'.'+newFileExt))
+
+                    if not os.path.exists(os.path.dirname(dstFile)):
+                        logging.debug('Creating folder path: ' + os.path.dirname(dstFile))
+                        os.makedirs(os.path.dirname(dstFile))
+
+                    dstFile = findNonConflictingFilePath(dstFile)
+
+                    logging.info('Moving file from: ' + str(uncatalogedFilePath) + ' destination: ' + str(dstFile))
+                    os.rename(uncatalogedFilePath,dstFile)
+
+                else:
+                    if mediaObj.content_type == 'tvepisode':
+                        print 'ContentMatch Show: ' + str(mediaObj.title)
+                        print 'ContentMatch Season: ' + str(mediaObj.season_number)
+                        print 'ContentMatch EpisodeNumber: ' + str(mediaObj.episode_number)
+                        print 'ContentMatch EpisodeName: ' + str(mediaObj.episode_title)
+                    else:
+                        print 'ContentMatch Title: ' + str(mediaObj.title)
+
+                    print 'ContentMatch Year: ' + str(mediaObj.production_year)
+            else:
+                print 'Failed to find media for: ' + str(uncatalogedFilePath)
+
+            logging.info('Catalog end -------')
 
 
 

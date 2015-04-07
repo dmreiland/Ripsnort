@@ -22,7 +22,7 @@ class Ripper:
             elif ripType == 'dir':
                 import makemkvdir
                 self.api = makemkvdir.MakeMKVDir(ripPath)
-            elif ripType == 'file':
+            elif ripType == 'image':
                 import makemkvfile
                 self.api = makemkvfile.MakeMKVFile(ripPath)
 
