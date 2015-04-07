@@ -198,7 +198,9 @@ class DiscDrive:
         platformName = platform.system().lower().strip()
 
         if platformName == 'darwin' or platformName == 'linux':
-            doesExist = os.path.exists(deviceName)
+            fileOutput = subprocess.check_output(['file',deviceName])
+            if ': block special' in fileOutput:
+                doesExist = True
 
         elif platformName == 'windows':
             logging.error( 'No windows support yet' )
