@@ -212,7 +212,8 @@ class OpenSubtitles:
         
         if language is not None:
             searchDict['sublanguageid'] = language
-            
+
+# Filtering on season and episode causes too many results to be dropped. TODO re-add & examine 
 #        if seasonNumber is not None:
 #            searchDict['season'] = seasonNumber
 #            
@@ -254,81 +255,41 @@ class OpenSubtitles:
         
         logging.debug('Downloading link: ' + str(downloadLink))
         
+        zipData = None
+        
         try:
-            data = urllib2.urlopen(downloadLink).read()
+            zipData = urllib2.urlopen(downloadLink).read()
         except Exception as e:
             logging.error('Failed to fetch download link: ' + str(downloadLink) + ', err:' + str(e))
-            data = None
         
-        if data is None:
+        if zipData is None:
             logging.error('Failed to download: ' + str(downloadLink))
             return None
-        
+
         tmpZip = os.path.join(apppath.pathTemporary('opensubtitles'),'sub.zip')
 
         fTmp = open(tmpZip,'w')
-        fTmp.write(data)
+        fTmp.write(zipData)
         fTmp.close()
 
-        fTmp = open(tmpZip, 'r')
-
-        extractPath = os.path.join(apppath.pathTemporary('opensubtitles'),'subtemp')
-
-        if os.path.exists(extractPath):
-            shutil.rmtree(extractPath)
-            
-        os.makedirs(extractPath)
-            
-        try:
-            zip = zipfile.ZipFile(fTmp)
-            zip.extractall(extractPath)
-        except Exception as e:
-            logging.error('Failed to extract zip: ' + str(e))
-            return None
-
-        for name in os.listdir(extractPath):
-            extension = name.split('.')[-1]
-
+        archive = zipfile.ZipFile(tmpZip)
+        
+        if archive is None:
+            logging.error('Failed to extract zip: ' + str(downloadLink))
+        
+        for zipName in archive.namelist():
+            extension = zipName.split('.')[-1]
+        
             if extension == 'xml' or extension == 'html' or extension == 'txt' or extension == 'nfo':
-                logging.info('Ignoring file ' + name)
+                logging.info('Ignoring file ' + zipName)
 
             elif extension == 'srt':
-                zip.extract(name,extractPath)
-                extractedFile = os.path.join(extractPath,name)
-                fSrt = open(extractedFile,'r')
-                srtData = fSrt.read()
-                #tmp
-                open('/tmp/srttext.a','w').write(srtData)
-                assert(len(srtData)>0)
-                fSrt.close()
-                
-                try:
-                    captionObj = caption.SRTCaption(srtData,language)
-                except Exception as e:
-                    logging.error('Failed to extract srt from file ' + extractedFile + ', ' + downloadLink + ', ' + str(e)) 
-                    pass
-
-                os.remove(extractedFile)
-                logging.debug('Got SRT caption: ' + str(captionObj))
-                break
-
-#            elif extension == 'sub':
-#                zip.extract(name,extractPath)
-#                extractedFile = os.path.join(extractPath,os.listdir(extractPath)[0])
-#                fSub = open(extractedFile,'r')
-#                subData = fSub.read()
-#                fSub.close()
-#                captionObj = caption.VobSubCaption(subData,None,language)
-#                os.remove(extractedFile)
+                srtData = archive.open(zipName,'r').read()
+                captionObj = caption.SRTCaption(srtData,language)
 
             else:
-                logging.error('Unrecognised file:' + str(name))
+                logging.error('Unrecognised file:' + str(zipName))
 
-        if os.path.exists(extractPath):
-            shutil.rmtree(extractPath)
-
-        fTmp.close()
-        
         os.remove(tmpZip)
 
         return captionObj
