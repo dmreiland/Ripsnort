@@ -19,10 +19,12 @@ import caption
 
 
 class DiscName:
+
     def __init__(self,disc_name):
         self.originalDiscName = disc_name
         
         title, season, disc = DiscName.titleSeasonAndDiscFromDiscName(DiscName._removeUnnecessaryCharsFromTitle(disc_name))
+        title = DiscName._titleUpdateSpecialCases(title)
         self.title = title
         self.season = season
         self.discNumber = disc
@@ -144,15 +146,23 @@ class DiscName:
                        r'(?i)[_| ]?ACAB',
 
                        r'ᴴᴰ',
+                       r'(?i)[_| ]repack',
+                       r'(?i)[_| ]internal',
+                       r'(?i)[_| ]nfofix',
+                       r'(?i)[_| ]proper',
+                       r'(?i)[_| ]unrated',
                        r'(?i)[_| ]?[1|2][_| ]?cd',
                        r'(?i)[_| ]?[1|2][_| ]?dvd',
-                       r'(?i)[_| ]?1080p',
-                       r'(?i)[_| ]?720p',
+                       r'(?i)[_| ]?1080[p|i]',
+                       r'(?i)[_| ]?720[p|i]',
+                       r'(?i)[_| ]?576[p|i]',
+                       r'(?i)[_| ]?480[p|i]',
                        r'(?i)[_| ]?avi$',
                        r'(?i)[_| ]?xvid',
                        r'(?i)[_| ]?divx',
-                       r'(?i)[_| ]?x264',
-                       r'(?i)[_| ]?h264',
+                       r'(?i)[_| ]?mkv',
+                       r'(?i)[_| ]?mp4',
+                       r'(?i)[_| ]?[h|x]264',
                        r'(?i)[_| ]?iTunes$',
                        r'(?i)[_| ]?WEB\-?RIP',
                        r'(?i)[_| ]?WEB\-?DL',
@@ -161,8 +171,14 @@ class DiscName:
                        r'(?i)[_| ]?HD\-?TS',
                        r'(?i)[_| ]?TS$',
                        r'(?i)[_| ]?hd[\-|\_| ]?rip',
+                       r'(?i)[_| ]?hd[\-|\_| ]?screener',
                        r'(?i)[_| ]?br[\-|\_| ]?rip',
+                       r'(?i)[_| ]?br[\-|\_| ]?screener',
                        r'(?i)[_| ]?dvd[\-|\_| ]?rip',
+                       r'(?i)[_| ]?dvd[\-|\_| ]?screener',
+                       r'(?i)[_| ]?screener',
+                       r'(?i)[_| ]?telecine',
+                       r'(?i)[_| ]?telesync',
                        r'(?i)[_| ]?pal$',
                        r'(?i)[_| ]?ntsc',
                        r'(?i)[_| ]?dvd$',
@@ -205,44 +221,22 @@ class DiscName:
         tmpName = disc_name
     
         logging.debug('Removed unnecessary chars to \'' + tmpName + '\'')
-    
-        #first matching group - season, 2nd - disc number
-        regexSeasonDisk = [r'(?i)s([\d{1,2}])_?d([\d{1,2}])',
-                           r'(?:season|series)_?([\d{1,2}])_?(?:disc|disk|d)_?([\d{1,2}])',
-                           r'(?i)(?:s|series|season)[-|_| ]?([\d{1,2}]).*(?:d|disc|disk)[-|_| ]?([\d{1,2}])',
-                           r'(?i)([\d{1,2}])[-|_| ]([\d{1,2}])']
 
-        season = None
-        disc = None
-
-        for regTest in regexSeasonDisk:
-            regexSearch = re.search(regTest,tmpName)
-
-            if regexSearch != None:
-                logging.debug('Matched regex: ' + regTest)
-                matchGroups = regexSearch.groups()
-                season = int( matchGroups[0] )
-                disc = int( matchGroups[1] )
-                tmpName = re.sub(regTest,'',tmpName)
-                didRegexMatch = True
-                
-        regexDiskOnly = [r'(?i)(?:d|disc|disk)[-|_| ]?([\b\d{1,2}]\b)',
-                         r'(?i)(?:d|disc|disk)(\d{1,2})[-|_| ]?(?:[t|T]\d{1,2})']
-
-        for regTest in regexDiskOnly:
-            regexSearch = re.search(regTest,tmpName)
-
-            if regexSearch != None:
-                logging.debug('Matched regex: ' + regTest)
-                matchGroups = regexSearch.groups()
-                
-                try:
-                    disc = int( matchGroups[0] )
-                    tmpName = re.sub(regTest,'',tmpName)
-                    didRegexMatch = True
-                except:
-                    pass
+        tmpName, season = DiscName._seasonNumberOnlyFromDiscName(tmpName)
+        tmpName, disc = DiscName._discNumberOnlyFromDiscName(tmpName)
+        
+        tmpName, seasonMixed, discMixed = DiscName._mixedDiscAndSeasonFromDiscName(tmpName)
+        tmpName, discShort = DiscName._discNumberShortFromDiscName(tmpName)
+        
+        if season == None:
+            season = seasonMixed
             
+        if disc == None:
+            disc = discMixed
+            
+        if disc == None:
+            disc = discShort
+        
         #look for numbers prepended to the end of the last word and add space
         numberWhitespacing = r'\b(\D+)(\d+)\b$'
         numberWhitespacingRE = re.compile(numberWhitespacing)
@@ -262,6 +256,126 @@ class DiscName:
         logging.debug('Converted disc name: \'' +disc_name+ '\' to title:' + tmpName + ', season:' + str(season) + ', disc:' + str(disc))
 
         return [tmpName,season,disc]
+    
+    @staticmethod
+    def _seasonNumberOnlyFromDiscName(disc_name):
+        tmpName = disc_name
+        
+        #first matching group - season, 2nd - disc number
+        regexSeason = [r'(?i)(?:season|series)(?:[_|\.|\ ])?([\d{1,2}])']
+
+        season = None
+
+        for regTest in regexSeason:
+            regexSearch = re.search(regTest,tmpName)
+
+            if regexSearch != None:
+                logging.debug('Matched regex: ' + regTest + ', for text: ' + tmpName)
+                matchGroups = regexSearch.groups()
+
+                try:
+                    season = int( matchGroups[0] )
+                except:
+                    pass
+
+                tmpName = re.sub(regTest,'',tmpName)
+                didRegexMatch = True
+                
+        return [tmpName,season]
+        
+    @staticmethod
+    def _discNumberOnlyFromDiscName(disc_name):
+        regexDiskOnly = [r'(?i)(?:disknumber|discnumber|disc|disk)(?:_|\.|\ )([\d{1,2}])']
+
+        disc = None
+        tmpName = disc_name
+
+        for regTest in regexDiskOnly:
+            regexSearch = re.search(regTest,tmpName)
+
+            if regexSearch != None:
+                logging.debug('Matched regex: ' + regTest + ', for text: ' + tmpName)
+                matchGroups = regexSearch.groups()
+
+                try:
+                    disc = int( matchGroups[0] )
+                except:
+                    pass
+
+                tmpName = re.sub(regTest,'',tmpName)
+                
+        return [tmpName,disc]
+    
+    @staticmethod
+    def _discNumberShortFromDiscName(disc_name):
+        regexDiskOnly = [r'(?i)(?:d|disc|disk)[-|_| ]?([\b\d{1,2}]\b)',
+                           r'(?i)(?:d|disc|disk)(\d{1,2})[-|_| ]?(?:[t|T]\d{1,2})']
+
+        disc = None
+        tmpName = disc_name
+
+        for regTest in regexDiskOnly:
+            regexSearch = re.search(regTest,tmpName)
+
+            if regexSearch != None:
+                logging.debug('Matched regex: ' + regTest)
+                matchGroups = regexSearch.groups()
+
+                try:
+                    disc = int( matchGroups[0] )
+                except:
+                    pass
+
+                tmpName = re.sub(regTest,'',tmpName)
+                
+        return [tmpName,disc]
+    
+    @staticmethod
+    def _mixedDiscAndSeasonFromDiscName(disc_name):
+        tmpName = disc_name
+        
+        #first matching group - season, 2nd - disc number
+        regexSeasonDisk = [r'(?i)s([\d{1,2}])_?d([\d{1,2}])',
+                           r'(?i)(?:season|series|s)?_?([\d{1,2}])_?(?:disknumber|discnumber|disc|disk|d)[_|\ ]([\d{1,2}])',
+                           r'(?i)(?:s|series|season\s)[-|_| ]?([\d{1,2}]).*(?:d|disc|disk)[-|_| ]?([\d{1,2}])',
+                           r'(?i)([\d{1,2}])[-|_| ]([\d{1,2}])$']
+        
+        season = None
+        disc = None
+
+        for regTest in regexSeasonDisk:
+            print 'testing ' + regTest + ',' + tmpName
+            regexSearch = re.search(regTest,tmpName)
+
+            if regexSearch != None:
+                logging.debug('Matched regex: ' + regTest)
+                matchGroups = regexSearch.groups()
+
+                try:
+                    season = int( matchGroups[0] )
+                except:
+                    pass
+                
+                try:
+                    disc = int( matchGroups[1] )
+                except:
+                    pass
+
+                tmpName = re.sub(regTest,'',tmpName)
+                didRegexMatch = True
+        
+        return [tmpName,season,disc]
+    
+    @staticmethod
+    def _titleUpdateSpecialCases(disc_name):
+        tmpName = disc_name
+        tmpName = tmpName.replace('Bones F1','Bones')
+        tmpName = tmpName.replace('Eu 109579','Frasier Season 1')
+        tmpName = tmpName.replace('Eu 109580','Frasier Season 2')
+        tmpName = tmpName.replace('Eu 109819','Frasier Season 3')
+        
+        return tmpName
+
 
     @staticmethod
     def _OSSplitPath(split_path):
@@ -309,7 +423,7 @@ class DiscName:
                        r'^(?i)volumes?$',
                        r'^(?i)mo?u?nts?$',
                        r'^(?i)ripsnort$',
-                       r'^(?i)(in)?completes$',
+                       r'^(?i)(in)?completes?$',
                        ]
         
         for regTest in regexChecks:
@@ -319,10 +433,8 @@ class DiscName:
     
 
 def test():
-    assert DiscName('My.Movie.2014.3D.BluRay.720p.x264.DTS-MA-ac3.ISO').title == 'My Movie 2014'
-    assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie 2014'
 
-    pathComponents = ['Die Hard','ripsnort','private','disc','disk','desktop','documents','my home movies','volumes','users','mnt','user','lcl','local','bin','sbin','var','lib','libs','home','homes','mymovies','movies','homemovies','video','videos','video','myvideo','homevideos','download','mydownloads','share','shares','workspace']
+    pathComponents = ['Die Hard','incomplete','ripsnort','private','disc','disk','desktop','documents','my home movies','volumes','users','mnt','user','lcl','local','bin','sbin','var','lib','libs','home','homes','mymovies','movies','homemovies','video','videos','video','myvideo','homevideos','download','mydownloads','share','shares','workspace']
     filteredComponents = DiscName._removeUnnecessaryCharsFromPathComponents(pathComponents)
     
     assert len(filteredComponents) == 1
@@ -402,12 +514,35 @@ def test():
     assert DiscName('bones_season_7_d_1').title == 'Bones'
     assert DiscName('bones_season_7_d_1').season == 7
     assert DiscName('bones_season_7_d_1').discNumber == 1
+   
+    assert DiscName('Frasier DiscNumber 1').title == 'Frasier'
+    assert DiscName('Frasier DiscNumber 1').season == None
+    assert DiscName('Frasier DiscNumber 1').discNumber == 1
+   
+    assert DiscName('Frasier Disc 2').title == 'Frasier'
+    assert DiscName('Frasier Disc 2').season == None
+    assert DiscName('Frasier Disc 2').discNumber == 2
+   
+    assert DiscName('Frasier Disc3').title == 'Frasier'
+    assert DiscName('Frasier Disc3').season == None
+    assert DiscName('Frasier Disc3').discNumber == 3
+   
+    assert DiscName('Frasier d4').title == 'Frasier'
+    assert DiscName('Frasier d4').season == None
+    assert DiscName('Frasier d4').discNumber == 4
     
     assert DiscName('My.Movie.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie'
     assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iSo').title == 'My Movie 2014'
     assert DiscName('My.Movie.2014.3D.BluRay.720p.x264.DTS-MA-ac3.ISO').title == 'My Movie 2014'
     
     assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie 2014'
+ 
+    assert DiscName('My.Movie.2014.3D.BluRay.720p.x264.DTS-MA-ac3.ISO').title == 'My Movie 2014'
+    assert DiscName('My.Movie.2014.3D.BluRay.1080p.AVC.TrueHD7.1-CHDBits.iso').title == 'My Movie 2014'
+
+    assert DiscName('Heroes_Season_2_(Disc_1)').title == 'Heroes'
+    assert DiscName('Heroes_Season_2_(Disc_1)').season == 2
+    assert DiscName('Heroes_Season_2_(Disc_1)').discNumber == 1
     
     assert DiscName('red.hood.2010.dvdrip.xvid').title == 'Red Hood 2010'
 
