@@ -165,10 +165,13 @@ class LocalTrackMkv(VideoTrack):
 
                     for segment in segmentTracks.split('| + A track'):
                         if len(re.findall(r'Track\ type\:\ subtitles',segment)) > 0:
-                            lang = re.findall(r'Language\:\ ...?',segment)[0].replace('Language: ','').strip()
                             
                             if index == currentSubtitleIndex:
-                                subLang = lang
+                                try:
+                                    subLang = re.findall(r'Language\:\ ...?',segment)[0].replace('Language: ','').strip()
+                                except:
+                                    #Language not set, assume english
+                                    subLang = 'eng'
                                 break
 
                             currentSubtitleIndex += 1
