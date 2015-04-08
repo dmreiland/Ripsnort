@@ -265,9 +265,18 @@ class MakeMKVDisc:
         for key in dictionaryInfo['tracks'].keys():
             track = dictionaryInfo['tracks'][key]
             
-            chapters = int(track['Chapter Count'])
+            try:
+                chapters = int(track['Chapter Count'])
+            except:
+                chapters = -1
+
             bytes = int(track['Disk Size Bytes'])
-            titleId = int(track['Original Title ID'])
+            
+            try:
+                titleId = int(track['Original Title ID'])
+            except:
+                titleId = -1
+
             filename = track['Output Filename']
             durationStr = track['Duration']
             durationHours = int(durationStr.split(':')[0])

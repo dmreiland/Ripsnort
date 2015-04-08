@@ -330,6 +330,10 @@ def ripContent(config,notify,ripper,ripType,ripPath):
 
     elif ripType == 'file' or ripType == 'dir':
         discName = disc_name.DiscName(os.path.basename(ripPath))
+        
+    else:
+        print 'Unknown rip-type: ' + str(ripType)
+        sys.exit(1)
 
     ripPathIncompleteRelative = config['ripper']['precatalog_save_path']
     ripPathIncompleteAbsolute = os.path.join(ripPathIncompleteRelative,discName.formattedName)
@@ -349,7 +353,7 @@ def ripContent(config,notify,ripper,ripType,ripPath):
     ripTracks = []
 
     '''While we rip the video tracks. Asynchronously pre-cache all the possible media candidates'''
-    t = threading.Thread(target=allMediaCandidatesForDiscName)
+    t = threading.Thread(target=allMediaCandidatesForDiscName, args=(discName,))
     t.daemon = True
     t.start()
 
