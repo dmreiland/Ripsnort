@@ -141,6 +141,7 @@ class DiscDrive:
         else:
             logging.error('Undefined OS: ' + self.osType)
             sys.exit(1)        
+
         return isInserted
     
     def mountedPath(self):
@@ -151,7 +152,7 @@ class DiscDrive:
                 try:
                     mountStdout = subprocess.check_output(['mount'])
                 except subprocess.CalledProcessError as e:
-                    logging.error( 'Failed to eject disc ' + self.deviceID + ', reason: **' + str(e.output) + '**' )
+                    logging.error( 'Failed to call mount (' + self.deviceID + '), reason: **' + str(e.output) + '**' )
                     sys.exit(1)
 
                 for line in mountStdout.split('\n'):
@@ -166,6 +167,9 @@ class DiscDrive:
         else:
             logging.error('Undefined OS: ' + self.osType)
             sys.exit(1)
+            
+        if mountedPath == None:
+            logging.warn('Failed to find suitable mount path. Something is wrong')
 
         return mountedPath
         
@@ -174,6 +178,7 @@ class DiscDrive:
     
         if self.isDiscInserted():
             mountPath = self.mountedPath()
+            assert mountPath == None
             discName = os.path.basename(mountPath)
 
         return discName
